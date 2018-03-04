@@ -13,7 +13,19 @@
 			"path": "github.com/influx6/faux/tests",
 			"revision": "79fa50eff2f549ebbbf268c48942c86a1605d931",
 			"revisionTime": "2018-03-03T19:20:10Z"
+		},
+		{
+			"checksumSHA1": "eBADGw/n7E2put4cOe6v8AVKmns=",
+			"path": "github.com/wirekit/wire",
+			"revision": "76aeaf64affff10de47c02eac23e0c3c4a93400a",
+			"revisionTime": "2018-03-04T19:07:59Z"
+		},
+		{
+			"checksumSHA1": "kOK8OwdVW1Nf2cJRZVl25Saew3o=",
+			"path": "github.com/wirekit/wire/internal",
+			"revision": "76aeaf64affff10de47c02eac23e0c3c4a93400a",
+			"revisionTime": "2018-03-04T19:07:59Z"
 		}
 	],
-	"rootPath": "github.com/wirekit/llio"
+	"rootPath": "github.com/wirekit/tlsfs"
 }
