@@ -13,7 +13,7 @@ import (
 	"compress/gzip"
 
 	"github.com/influx6/faux/pools/pbytes"
-	"github.com/wirekit/wire/internal"
+	"github.com/wirekit/llio"
 )
 
 var (
@@ -84,9 +84,9 @@ func (zt *ZapFile) UnmarshalReader(r io.Reader) error {
 
 	zt.Name = string(tag)
 
-	var lr *internal.LengthRecvReader
+	var lr *llio.LengthRecvReader
 	if cbit == 0 {
-		lr = internal.NewLengthRecvReader(br, 4)
+		lr = llio.NewLengthRecvReader(br, 4)
 	} else {
 		gr, err := gzip.NewReader(br)
 		if err != nil {
@@ -94,7 +94,7 @@ func (zt *ZapFile) UnmarshalReader(r io.Reader) error {
 		}
 
 		defer gr.Close()
-		lr = internal.NewLengthRecvReader(gr, 4)
+		lr = llio.NewLengthRecvReader(gr, 4)
 	}
 
 	var tracks []ZapTrack

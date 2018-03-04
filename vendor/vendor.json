@@ -15,6 +15,12 @@
 			"revisionTime": "2018-03-03T19:20:10Z"
 		},
 		{
+			"checksumSHA1": "DvH7vztzAqYOu/WfXosUUfXlYfg=",
+			"path": "github.com/wirekit/llio",
+			"revision": "77346282e694e919717c1eb031c7dd4352b55555",
+			"revisionTime": "2018-03-04T19:02:03Z"
+		},
+		{
 			"checksumSHA1": "eBADGw/n7E2put4cOe6v8AVKmns=",
 			"path": "github.com/wirekit/wire",
 			"revision": "76aeaf64affff10de47c02eac23e0c3c4a93400a",
