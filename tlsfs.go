@@ -86,7 +86,7 @@ func (zt *ZapFile) UnmarshalReader(r io.Reader) error {
 
 	var lr *llio.LengthRecvReader
 	if cbit == 0 {
-		lr = llio.NewLengthRecvReader(br, 4)
+		lr = llip.NewLengthRecvReader(br, 4)
 	} else {
 		gr, err := gzip.NewReader(br)
 		if err != nil {
