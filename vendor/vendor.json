@@ -1,0 +1,19 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "1HUry0EiJTnSykWVkWw7ekJ9Zvk=",
+			"path": "github.com/influx6/faux/pools/pbytes",
+			"revision": "79fa50eff2f549ebbbf268c48942c86a1605d931",
+			"revisionTime": "2018-03-03T19:20:10Z"
+		},
+		{
+			"checksumSHA1": "/PE0RGwoNeVkhlVKWxnIt0TgAA4=",
+			"path": "github.com/influx6/faux/tests",
+			"revision": "79fa50eff2f549ebbbf268c48942c86a1605d931",
+			"revisionTime": "2018-03-03T19:20:10Z"
+		}
+	],
+	"rootPath": "github.com/wirekit/llio"
+}
