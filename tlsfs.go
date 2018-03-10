@@ -12,6 +12,10 @@ import (
 
 	"compress/gzip"
 
+	"crypto"
+
+	"crypto/x509"
+
 	"github.com/influx6/faux/pools/pbytes"
 	"github.com/wirekit/llio"
 )
@@ -28,7 +32,279 @@ var (
 
 	// ErrInvalidRead is returned when expected read size is not met by readers .Read() call.
 	ErrInvalidRead = errors.New("read failed to match expected header size")
+
+	// ErrNotFound is returned when a giving key has no related value.
+	ErrNotFound = errors.New("not found")
+
+	// ErrExpired is returned when certificate has expired.
+	ErrExpired = errors.New("not found")
+
+	// ErrUserDisagreesWithToS is returned when user disagrees with CA Terms of Service(TOS).
+	ErrUserDisagreesWithToS = errors.New("user disagrees with CA TOS")
+
+	// ErrInvalidDomain is returned when the domain desired is invalid
+	ErrInvalidDomain = errors.New("domain value is invalid")
+
+	// ErrCertificateHasNoBundle is returned when the domain desired is invalid
+	ErrErrCertificateHasNoBundle = errors.New("domain certificate has no bundled data")
+
+	// ErrZapFileDomainMismatched is returned when given domain does not match data in file.
+	ErrZapFileDomainMismatched = errors.New("ZapFile domain-account.Domain does not match expected")
+
+	// ErrZapFileHasNoAcctData is returned when a zapfile contains no acct data for a domain.
+	ErrZapFileHasNoAcctData = WithZapCorrupted(errors.New("ZapFile contains no domain-account data"))
+
+	// ErrZapFileHasNoPKeyData is returned when a zapfile contains no private key data for a domain.
+	ErrZapFileHasNoPKeyData = WithZapCorrupted(errors.New("ZapFile contains no domain-private-key data"))
+
+	// ErrZapFileHasNoUserRegistrationData is returned when a zapfile contains no user registration data for a domain.
+	ErrZapFileHasNoUserRegistrationData = WithZapCorrupted(errors.New("ZapFile contains no domain-user-registration-data data"))
+
+	// ErrZapFileHasNoCertificate is returned when a zapfile contains no domain certificate for a domain.
+	ErrZapFileHasNoCertificate = WithZapCorrupted(errors.New("ZapFile contains no domain-certificate data"))
+
+	// ErrZapFileHasNoIssuerCertificate is returned when a zapfile contains no domain issuer certificate
+	// from the CA for a domain.
+	ErrZapFileHasNoIssuerCertificate = WithZapCorrupted(errors.New("ZapFile contains no domain-issuer-certificate data"))
+
+	// ErrZapFileHasNoCertificateRequest is returned when a zapfile contains no domain certificate
+	// request or CRS, that was used to generate the domain certificate for a domain.
+	ErrZapFileHasNoCertificateRequest = WithZapCorrupted(errors.New("ZapFile contains no domain-certificate-request data"))
 )
+
+// constants of certificate life-times.
+const (
+	// Live30Weeks sets the duration representing the number of hours in a 30 days period.
+	Live30Days = time.Hour * 720
+
+	// Live2Weeks sets the duration representing the number of hours in all the days in a 2 week period.
+	Live2Weeks = time.Hour * 366
+
+	// OneYear sets the duration representing the number of hours in all the days in a year.
+	OneYear = time.Hour * 8766
+)
+
+const (
+	// DomainNameDataZapName sets the name used to store the zap track for the domain
+	// account in a zap file.
+	DomainNameDataZapName = "domain-uri-name"
+
+	// DomainUserDataZapName sets the name used to store the zap track for the domain
+	// account in a zap file.
+	DomainUserDataZapName = "domain-user-email"
+
+	// DomainBundleDataZapName sets the name used to store the zap track for the domain
+	// certificate bundle zap file
+	DomainBundleDataZapName = "domain-bundle-data"
+
+	// DomainPrivateKeyZapName sets the name used to store the zap track for the domain
+	// account in a zap file.
+	DomainPrivateKeyZapName = "domain-private-key"
+
+	// DomainCertificateZapName sets the name used to store the zap track for the domain
+	// account in a zap file.
+	DomainCertificateZapName = "domain-certificate"
+
+	// DomainUserRegistrationDataZapName sets the name used to store the zap track for the domain
+	// user registration data in a zap file.
+	DomainUserRegistrationDataZapName = "domain-user-registration-data"
+
+	// IssuerDomainCertificateZapName sets the name used to store the zap track for the domain
+	// account in a zap file.
+	IssuerDomainCertificateZapName = "domain-issuer-certificate"
+
+	// DomainCertificateRequestZapName sets the name used to store the zap track for the domain
+	// account in a zap file.
+	DomainCertificateRequestZapName = "domain-certificate-request"
+)
+
+//*************************************************************
+// NotExists interface
+//*************************************************************
+
+// NotExists is define to provide a clear distinct means of identify
+// a given error has one that relates to the non-existence of a desired
+// find. It provides a more robust approach to dealing with
+// existence/non-existence errors instead of evaluating the equality
+// of a declared error to another.
+type NotExists interface {
+	error
+	NotExists()
+}
+
+//*************************************************************
+// ZapFS interface
+//*************************************************************
+
+// ZapWriter defines an interface which returns a
+// set of methods to add a series of byte slice with
+// associated names to a underline zap filesystem.
+type ZapWriter interface {
+	Flush() error
+	Add(string, []byte) error
+}
+
+// ZapFS defines an interface that exposes a filesystem to
+// power the storage/retrieval of tls certificates with ease.
+type ZapFS interface {
+	Remove(string) error
+	ReadAll() ([]ZapFile, error)
+	Read(string) (ZapFile, error)
+	Write(string) (ZapWriter, error)
+}
+
+//*************************************************************
+// Certificate Status Flag
+//*************************************************************
+
+// StatusFlag defines a int type indicating the status of
+// a flag creation/renewal/removal state.
+type StatusFlag int8
+
+const (
+	// OPFailed represents the critical state of a request for the creation/renewal or removal of
+	// a existing certificate either with CA or underline file system.
+	OPFailed StatusFlag = iota + 1
+
+	// CACExpired represents the state where a certificate is totally expired.
+	CACExpired
+
+	// CARenewalCriticalExpiration states the certificate to have failed renewal
+	// and lies below two weeks expiration limit and requires user actions due to an
+	// unexpected error.
+	CARenewalCriticalExpiration
+
+	// CARenewalEarlyExpiration states the certificate to have fallen into the
+	// 30-days expiration limit and renewal had failed due to unknown CA reasons
+	// that require manual user action.
+	CARenewalEarlyExpiration
+
+	// CACriticalRenewedRequired states the given certificates requires immediate renewal
+	// from it's CA on a critical level where it is below or around 2 weeks to expiration.
+	CACriticalRenewedRequired
+
+	// CARenewedRequired states the given certificates requires immediate renewal
+	// from it's CA.
+	CARenewedRequired
+
+	// Renewed is the state returned when a renewed operation succeeded for a
+	// existing certificate.
+	Renewed
+
+	// Created is the state returned when the new certificate request succeeded.
+	Created
+
+	// Live is returned when a giving certificate is still in good shape for use.
+	Live
+)
+
+// Status defines a interface type that exposes a method to
+// return the status flag of a giving certificate.
+type Status interface {
+	// Reason returns an error if such occured about the non-critical
+	// failure of a creation/renewal of a certificate requests.
+	Reason() error
+
+	// Flag returns the status flag representing the status of
+	// a certificate creation/renewal.
+	Flag() StatusFlag
+}
+
+// WithStatus returns a StatusFlag with provided flag.
+func WithStatus(flag StatusFlag, reason error) Status {
+	return tlstatus{flag: flag, reason: reason}
+}
+
+type tlstatus struct {
+	flag   StatusFlag
+	reason error
+}
+
+// Reason implements the Status interface Reason method.
+func (tl tlstatus) Reason() error {
+	return tl.reason
+}
+
+// Flag implements the Status interface Flag method.
+func (tl tlstatus) Flag() StatusFlag {
+	return tl.flag
+}
+
+//*************************************************************
+// TlsFS interface and implementation
+//*************************************************************
+
+// TOSAction defines a function called to receive user response
+// towards the need to agree to a CA Terms of service.
+type TOSAction func(tosURL string) bool
+
+// TLSFS defines an interface which exposes methods to create
+// tls certificates from a given root CA and have the underline
+// certificates be stored within a underline ZapFS.
+type TLSFS interface {
+	All() ([]DomainAccount, error)
+	GetUser(email string) (Account, error)
+	Revoke(email string, domain string) error
+	Get(email string, domain string) (TLSDomainCertificate, Status, error)
+	Renew(email string, domain string) (TLSDomainCertificate, Status, error)
+	Create(account NewDomain, action TOSAction) (TLSDomainCertificate, Status, error)
+}
+
+// TLSDomainCertificate defines a giving structure which holds generated
+// certificates with associated tls.Certificates received from
+type TLSDomainCertificate struct {
+	User              string                   `json:"acct" description:"acct email related to the domain user"`
+	Domain            string                   `json:"domain" description:"domain generated certificate"`
+	Certificate       *x509.Certificate        `json:"certificate" description:"certificate generate for request and account"`
+	IssuerCertificate *x509.Certificate        `json:"issuer_certificate" description:"issuer/CA certificate bundled with generate certificate"`
+	Request           *x509.CertificateRequest `json:"req" description:"certificate request to build certificate"`
+	Bundle            interface{}              `json:"bundle" description:"certificate bundle received from issuer/CA"`
+}
+
+// KeyType defines the custom key-type acceptable for
+// user private key generation.
+type KeyType string
+
+// constants of key-types
+const (
+	RSA2048  = KeyType("RSA-2048")
+	RSA4096  = KeyType("RSA-4096")
+	RSA8192  = KeyType("RSA-8192")
+	ECKey256 = KeyType("EC-P256")
+	ECKey384 = KeyType("EC-P384")
+	ECKey512 = KeyType("EC-P512")
+)
+
+// NewDomain defines the data which is supplied for the creation
+// of certificates for a given user identified by it's email.
+type NewDomain struct {
+	Email      string  `json:"email" description:"email for certificate user"`
+	KeyType    KeyType `json:"type" description:"key type for private key"`
+	Domain     string  `json:"domain" description:"domain for certificate creation"`
+	CommonName string  `json:"common_name" description:"common name for certificate must not be empty else put '*'"`
+}
+
+// Account defines a type which represents a given registered
+// user from a acme.
+type Account interface {
+	GetEmail() string
+	GetPrivateKey() crypto.PrivateKey
+}
+
+// DomainAccount defines a struct which relates a set of registered
+// domain certificates to an existing user account.
+type DomainAccount struct {
+	Acct    Account
+	Domains []TLSDomainCertificate
+}
+
+// DomainAccounts defines a slice type of DomainAccount objects and
+// implements the sort.Sort interface.
+type DomainAccounts []DomainAccount
+
+func (acd DomainAccounts) Len() int           { return len(acd) }
+func (acd DomainAccounts) Swap(i, j int)      { acd[i], acd[j] = acd[j], acd[i] }
+func (acd DomainAccounts) Less(i, j int) bool { return acd[i].Acct.GetEmail() < acd[j].Acct.GetEmail() }
 
 //*************************************************************
 // ZapFS: Tracks and Files
@@ -39,6 +315,36 @@ var (
 type ZapFile struct {
 	Name   string
 	Tracks []ZapTrack
+	maps   map[string]int
+}
+
+// Find attempts to find giving ZapTrack with associated name.
+func (zt *ZapFile) Find(name string) (ZapTrack, error) {
+	if zt.maps == nil {
+		zt.maps = make(map[string]int)
+	}
+	if index, has := zt.maps[name]; has {
+		return zt.Tracks[index], nil
+	}
+
+	// if we have disparity with cache and tracks, rebuild cache.
+	if len(zt.maps) != len(zt.Tracks) {
+		zt.buildCache()
+	}
+
+	if index, has := zt.maps[name]; has {
+		return zt.Tracks[index], nil
+	}
+
+	return ZapTrack{}, ErrNotFound
+}
+
+// buildCache populates the internal
+func (zt *ZapFile) buildCache() {
+	zt.maps = make(map[string]int)
+	for index, track := range zt.Tracks {
+		zt.maps[track.Name] = index
+	}
 }
 
 // WriteFlatTo writes the data of a ZapFile without any compression
@@ -56,6 +362,8 @@ func (zt ZapFile) WriteGzippedTo(w io.Writer) (int64, error) {
 // UnmarshalReader takes a giving reader and attempts to decode it's
 // content has a ZapFile either compressed or uncompressed.
 func (zt *ZapFile) UnmarshalReader(r io.Reader) error {
+	zt.maps = make(map[string]int)
+
 	br := bufio.NewReader(r)
 	header := make([]byte, 9)
 
@@ -134,6 +442,7 @@ func (zt *ZapFile) UnmarshalReader(r io.Reader) error {
 			return err
 		}
 
+		zt.maps[track.Name] = len(tracks)
 		tracks = append(tracks, track)
 	}
 
@@ -304,34 +613,31 @@ func (zt ZapTrack) WriteTo(w io.Writer) (int64, error) {
 }
 
 //*************************************************************
-// ZapFS interface and implementation
+// CorruptedError
 //*************************************************************
 
-// ZapWriter defines an interface which returns a
-// set of methods to add a series of byte slice with
-// associated names to a underline zap filesystem.
-type ZapWriter interface {
-	Flush() error
-	Add(string, []byte) error
+var _ error = ZapCorruptedError{}
+
+// ZapCorruptedError defines an zap error which contain a given reason
+// for the case of a corrupted zap file.
+type ZapCorruptedError struct {
+	Reason error
+	File   string
 }
 
-// ZapFS defines an interface that exposes a filesystem to
-// power the storage/retrieval of tls certificates with ease.
-type ZapFS interface {
-	Read(string) (ZapFile, error)
-	Write(string) (ZapWriter, error)
+// WithZapCorrupted error returns a new instance of ZapCorruptedError.
+func WithZapCorrupted(err error) *ZapCorruptedError {
+	return &ZapCorruptedError{Reason: err}
 }
 
-//*************************************************************
-// ZapFS and TLSFS interface and implementation
-//*************************************************************
-
-type TLSFS interface {
+// Error implements the error interface.
+func (zc ZapCorruptedError) Error() string {
+	msg := "ZapFile Corrupted: " + zc.Reason.Error()
+	if zc.File != "" {
+		msg += " File: " + zc.File
+	}
+	return msg
 }
-
-//func TLSFS(authority certificates.CertificateAuthorityProfile) {
-//
-//}
 
 //*************************************************************
 //  internal types and methods

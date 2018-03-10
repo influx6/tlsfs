@@ -1,11 +1,11 @@
-package tlsfs
+package tlsfs_test
 
 import (
 	"bytes"
 	"testing"
 
 	"github.com/influx6/faux/tests"
-	"github.com/wirekit/wire/tlsfs"
+	"github.com/wirekit/tlsfs"
 )
 
 func TestZapFile_Gzip(t *testing.T) {
@@ -16,6 +16,16 @@ func TestZapFile_Gzip(t *testing.T) {
 	var zfile tlsfs.ZapFile
 	zfile.Name = "warzone-drs"
 	zfile.Tracks = append(zfile.Tracks, track)
+
+	if _, err := zfile.Find("warzone-drs"); err != nil {
+		tests.FailedWithError(err, "Should have retrieved given zap track")
+	}
+	tests.Passed("Should have retrieved given zap track")
+
+	if _, err := zfile.Find("warzone-drs2"); err == nil {
+		tests.Failed("Should have failed to retrieve given zap track")
+	}
+	tests.Passed("Should have failed to retrieve given zap track")
 
 	var zapData bytes.Buffer
 	if _, err := zfile.WriteGzippedTo(&zapData); err != nil {
