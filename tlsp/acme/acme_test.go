@@ -21,7 +21,7 @@ func TestAcmeFSWithMemFS(t *testing.T) {
 }
 
 func TestAcmeFSWithSysFS(t *testing.T) {
-	defer os.RemoveAll("temp/acme")
+	defer os.RemoveAll("temp")
 
 	var config acme.Config
 	config.HTTPChallengePort = 3550
