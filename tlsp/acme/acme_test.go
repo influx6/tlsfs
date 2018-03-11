@@ -21,13 +21,13 @@ func TestAcmeFSWithMemFS(t *testing.T) {
 }
 
 func TestAcmeFSWithSysFS(t *testing.T) {
-	defer os.RemoveAll("acme")
+	defer os.RemoveAll("temp/acme")
 
 	var config acme.Config
 	config.HTTPChallengePort = 3550
 	config.TLSSNIChallengePort = 4433
 	config.EnableHTTP01Challenge = true
-	config.UsersFileSystem = sysfs.NewSystemZapFS("acme/users")
-	config.CertificatesFileSystem = sysfs.NewSystemZapFS("acme/certs")
+	config.UsersFileSystem = sysfs.NewSystemZapFS("temp/acme/users")
+	config.CertificatesFileSystem = sysfs.NewSystemZapFS("temp/acme/certs")
 	tharness.RunTLSFSTestHarness(t, acme.NewAcmeFS(config))
 }

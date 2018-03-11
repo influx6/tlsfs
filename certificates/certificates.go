@@ -13,7 +13,6 @@ import (
 	"errors"
 	"math/big"
 	"net"
-	"strings"
 	"time"
 )
 
@@ -81,7 +80,6 @@ type PrivateKeyType int
 // ToPrivateKeyType returns the PrivateKeyType for the giving
 // string. See PrivateKeyType.String for string names.
 func ToPrivateKeyType(m string) PrivateKeyType {
-	m = strings.ToLower(m)
 	switch m {
 	case rsaCertKeyName:
 		return RSAKeyType
@@ -263,8 +261,10 @@ func (ca CertificateAuthority) initCertificateRequest(creq *CertificateRequest, 
 		return nil, err
 	}
 
-	before := time.Now()
 	req := creq.Request
+
+	// Back date into 5 minutes ago.
+	before := time.Now().Add(-time.Minute * 5)
 
 	var template x509.Certificate
 	template.NotBefore = before
@@ -478,7 +478,8 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 		ips = append(ips, net.ParseIP(ip))
 	}
 
-	before := time.Now()
+	// Back date into 5 minutes ago.
+	before := time.Now().Add(-time.Minute * 5)
 
 	var profile pkix.Name
 	profile.CommonName = cas.CommonName
@@ -927,6 +928,7 @@ func EncodeCertificateRequest(ca *x509.CertificateRequest) ([]byte, error) {
 // any error it encountered. Certificate is encoded into a pem.Block.
 func EncodePrivateKey(privateKey crypto.PrivateKey) ([]byte, error) {
 	ktype := GetPrivateKeyType(privateKey)
+
 	switch ktype {
 	case RSAKeyType:
 		pkey, ok := privateKey.(*rsa.PrivateKey)

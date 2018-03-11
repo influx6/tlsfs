@@ -1,9 +1,11 @@
 package owned_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/influx6/faux/tests"
+	"github.com/wirekit/tlsfs"
 	"github.com/wirekit/tlsfs/certificates"
 	"github.com/wirekit/tlsfs/fs/memfs"
 	"github.com/wirekit/tlsfs/fs/sysfs"
@@ -21,6 +23,7 @@ func TestCustomFSWithMemFS(t *testing.T) {
 		Country:    "NG",
 		Province:   "LG",
 		Version:    1,
+		LifeTime:   tlsfs.OneYear * 5,
 	}
 
 	fs, err := owned.NewCustomFS(config)
@@ -33,15 +36,18 @@ func TestCustomFSWithMemFS(t *testing.T) {
 }
 
 func TestCustomFSWithSysFS(t *testing.T) {
+	defer os.RemoveAll("temp")
+
 	var config owned.Config
-	config.RootFilesystem = sysfs.NewSystemZapFS("syscerts/roots")
-	config.UsersFileSystem = sysfs.NewSystemZapFS("syscerts/users")
-	config.CertificatesFileSystem = sysfs.NewSystemZapFS("syscerts/certs")
+	config.RootFilesystem = sysfs.NewSystemZapFS("temp/syscerts/roots")
+	config.UsersFileSystem = sysfs.NewSystemZapFS("temp/syscerts/users")
+	config.CertificatesFileSystem = sysfs.NewSystemZapFS("temp/syscerts/certs")
 	config.Profile = certificates.CertificateAuthorityProfile{
 		CommonName: "Dracol Certificate Authority",
 		Country:    "NG",
 		Province:   "LG",
 		Version:    1,
+		LifeTime:   tlsfs.OneYear * 5,
 	}
 
 	fs, err := owned.NewCustomFS(config)

@@ -17,6 +17,8 @@ import (
 
 	"crypto/md5"
 
+	"encoding/base64"
+
 	"github.com/wirekit/tlsfs"
 	"github.com/wirekit/tlsfs/certificates"
 	"github.com/wirekit/tlsfs/fs/sysfs"
@@ -562,7 +564,7 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 		return doma, tlsfs.WithStatus(tlsfs.OPFailed, err), err
 	}
 
-	return doma, acm.getDomainStatus(doma.Certificate), nil
+	return doma, tlsfs.WithStatus(tlsfs.Created, nil), nil
 }
 
 // Renew attempts to renew a existing TLSDomainCertificate for the giving domain.
@@ -720,13 +722,23 @@ func (acm *AcmeFS) getDomainStatus(cert *x509.Certificate) tlsfs.Status {
 		return tlsfs.WithStatus(tlsfs.CACExpired, tlsfs.ErrExpired)
 	}
 
-	left := today.Sub(expires)
-	if left <= tlsfs.Live30Days && left > tlsfs.Live2Weeks {
+	left := expires.Sub(today)
+
+	// if we are around 30 or 40 days then signal renewal required.
+	if left <= tlsfs.Live30Days && left <= tlsfs.Live40Days {
 		return tlsfs.WithStatus(tlsfs.CARenewedRequired, nil)
 	}
 
+	// If we are below 30 days and are just within a 3 weeks duration, then return
+	// early renew.
+	if left <= tlsfs.Live30Days && left > tlsfs.Live2Weeks {
+		return tlsfs.WithStatus(tlsfs.CARenewalEarlyExpiration, nil)
+	}
+
+	// if we are below 30 days and have crossed the 2 weeks limit then
+	// return critical renew.
 	if left <= tlsfs.Live2Weeks {
-		return tlsfs.WithStatus(tlsfs.CACriticalRenewedRequired, nil)
+		return tlsfs.WithStatus(tlsfs.CARenewalCriticalExpiration, nil)
 	}
 
 	return tlsfs.WithStatus(tlsfs.Live, nil)
@@ -1121,7 +1133,9 @@ func joinError(domain string, errs ...error) error {
 
 func getSignature(email, domain string) string {
 	mod := md5.New()
-	return string(mod.Sum([]byte(email + domain)))
+	mod.Write([]byte(email))
+	mod.Write([]byte(domain))
+	return base64.StdEncoding.EncodeToString(mod.Sum(nil))
 }
 
 func hostQualifies(hostname string) bool {

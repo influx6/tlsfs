@@ -74,6 +74,9 @@ var (
 
 // constants of certificate life-times.
 const (
+	// Live40Weeks sets the duration representing the number of hours in a 40 days period.
+	Live40Days = time.Hour * 960
+
 	// Live30Weeks sets the duration representing the number of hours in a 30 days period.
 	Live30Days = time.Hour * 720
 
@@ -160,10 +163,6 @@ type ZapFS interface {
 // Certificate Status Flag
 //*************************************************************
 
-// StatusFlag defines a int type indicating the status of
-// a flag creation/renewal/removal state.
-type StatusFlag int8
-
 const (
 	// OPFailed represents the critical state of a request for the creation/renewal or removal of
 	// a existing certificate either with CA or underline file system.
@@ -201,6 +200,37 @@ const (
 	Live
 )
 
+// StatusFlag defines a int type indicating the status of
+// a flag creation/renewal/removal state.
+type StatusFlag int8
+
+// String returns the a short phrase suitable for the giving
+// status flag number.
+func (s StatusFlag) String() string {
+	switch s {
+	case OPFailed:
+		return "1 - OP FAILED"
+	case CACExpired:
+		return "2 - CA CERTIFICATE EXPIRED"
+	case CARenewalCriticalExpiration:
+		return "3 - CA CERTIFICATE RENEWAL REDALERT STATE"
+	case CARenewalEarlyExpiration:
+		return "4 - CA CERTIFICATE RENEWAL CRITICAL STATE"
+	case CACriticalRenewedRequired:
+		return "5 - CA CERTIFICATE RENEWAL REQUIRED"
+	case CARenewedRequired:
+		return "6 - CA CERTIFICATE RENEWAL ADVICED"
+	case Renewed:
+		return "7 - CA CERTIFICATE RENEWED"
+	case Created:
+		return "8 - CA CERTIFICATE ISSUED"
+	case Live:
+		return "9 - CA CERTIFICATE STILL LIVE"
+	}
+
+	return "0 - UNKNOWN STATE"
+}
+
 // Status defines a interface type that exposes a method to
 // return the status flag of a giving certificate.
 type Status interface {
@@ -236,6 +266,10 @@ func (tl tlstatus) Flag() StatusFlag {
 //*************************************************************
 // TlsFS interface and implementation
 //*************************************************************
+
+// AgreeToTOS defines a variable which implements the TOSAction interface.
+// It always returns true to agree to a TOS action request.
+var AgreeToTOS TOSAction = func(_ string) bool { return true }
 
 // TOSAction defines a function called to receive user response
 // towards the need to agree to a CA Terms of service.
@@ -487,7 +521,7 @@ func (zt ZapFile) format(gzipped bool, w io.Writer) (int64, error) {
 	var contents bytes.Buffer
 	if gzipped {
 		gzw := gzip.NewWriter(&contents)
-		gzw.Name = zt.Name
+		//gzw.Name = zt.Name
 		gzw.ModTime = time.Now()
 
 		wc := &counterWriter{w: gzw}
