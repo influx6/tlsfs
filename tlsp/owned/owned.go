@@ -27,13 +27,6 @@ var (
 	_ tlsfs.TLSFS = &CustomFS{}
 )
 
-const (
-	// this defines a 3-months (90 days) duration which
-	// provides the total time for the lifetime of a signed
-	// certificate.
-	threeMonths = tlsfs.Live30Days * 3
-)
-
 //*************************************************************************
 // CustomFS implementation of tlsfs.TLSFS
 //*************************************************************************
@@ -93,7 +86,7 @@ func (c *Config) init() error {
 	// If we have not be assigned a default lifetime for certificate
 	// request signing, then allocate 1 year.
 	if c.SigningLifeTime <= 0 {
-		c.SigningLifeTime = tlsfs.OneYear
+		c.SigningLifeTime = tlsfs.ThreeMonths
 	}
 
 	if c.Profile.ECCurve == nil {
@@ -393,22 +386,6 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 		}
 	}
 
-	// Identify signature to be used for algorithmn for certificate.
-	var signature x509.SignatureAlgorithm
-	switch certificates.GetPrivateKeyType(user.PrivateKey) {
-	case certificates.RSAKeyType:
-		signature = x509.SHA512WithRSA
-	case certificates.ECDSAKeyType:
-		switch acct.KeyType {
-		case tlsfs.ECKey256:
-			signature = x509.ECDSAWithSHA256
-		case tlsfs.ECKey384:
-			signature = x509.ECDSAWithSHA384
-		case tlsfs.ECKey512:
-			signature = x509.ECDSAWithSHA512
-		}
-	}
-
 	// Create certificate request for this domain, add the common name
 	// and dns names to the ceriticate request.
 	var profile certificates.CertificateRequestProfile
@@ -419,9 +396,9 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 	profile.Country = acct.Country
 	profile.Province = acct.Province
 	profile.CommonName = acct.CommonName
-	profile.SignatureAlgorithm = signature
 	profile.Organization = acct.CommonName
 	profile.PrivateKey = user.GetPrivateKey()
+	profile.Emails = []string{"mailto://" + acct.Email}
 	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
 
 	// Sign and create official x509.CertificateRequest from profile.
@@ -432,7 +409,7 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 	}
 
 	// Approve requests for client and server usage, so user can use it in either way.
-	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, threeMonths); err != nil {
+	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, cm.config.SigningLifeTime); err != nil {
 		return tlsfs.TLSDomainCertificate{},
 			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to sign client certificate")), err
 	}
@@ -516,22 +493,6 @@ func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertifica
 		cm.rcl.Unlock()
 	}()
 
-	// Identify signature to be used for algorithmn for certificate.
-	var signature x509.SignatureAlgorithm
-	switch certificates.GetPrivateKeyType(user.PrivateKey) {
-	case certificates.RSAKeyType:
-		signature = x509.SHA512WithRSA
-	case certificates.ECDSAKeyType:
-		switch acct.KeyType {
-		case tlsfs.ECKey256:
-			signature = x509.ECDSAWithSHA256
-		case tlsfs.ECKey384:
-			signature = x509.ECDSAWithSHA384
-		case tlsfs.ECKey512:
-			signature = x509.ECDSAWithSHA512
-		}
-	}
-
 	// Create certificate request for this domain, add the common name
 	// and dns names to the ceriticate request.
 	var profile certificates.CertificateRequestProfile
@@ -543,8 +504,8 @@ func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertifica
 	profile.Province = acct.Province
 	profile.PrivateKey = user.PrivateKey
 	profile.CommonName = acct.CommonName
-	profile.SignatureAlgorithm = signature
 	profile.Organization = acct.CommonName
+	profile.Emails = []string{"mailto://" + acct.Email}
 	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
 
 	// Sign and recreate official x509.CertificateRequest from profile.
@@ -555,7 +516,7 @@ func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertifica
 	}
 
 	// Approve requests for client and server usage, so user can use it in either way.
-	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, threeMonths); err != nil {
+	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, cm.config.SigningLifeTime); err != nil {
 		return tlsfs.TLSDomainCertificate{},
 			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to sign client certificate")), err
 	}

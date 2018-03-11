@@ -1,12 +1,12 @@
-package certificates
+package certificates_test
 
 import (
 	"crypto/x509"
 	"testing"
 	"time"
 
+	"github.com/influx6/faux/tests"
 	"github.com/wirekit/tlsfs/certificates"
-	"github.com/wirekit/wire/vendor/github.com/influx6/faux/tests"
 )
 
 func TestCertificateRequestService(t *testing.T) {
@@ -18,7 +18,7 @@ func TestCertificateRequestService(t *testing.T) {
 		Province:     "South-West",
 	}
 
-	service.KeyStrength = 4096
+	service.RSAKeyStrength = 4096
 	service.LifeTime = (time.Hour * 8760)
 	service.Emails = append([]string{}, "alex.ewetumo@dreambench.io")
 
@@ -35,7 +35,7 @@ func TestCertificateRequestService(t *testing.T) {
 		Country:      "Nigeria",
 		Province:     "South-West",
 	}
-	requestService.KeyStrength = 2048
+	requestService.RSAKeyStrength = 4096
 
 	reqCA, err := certificates.CreateCertificateRequest(requestService)
 	if err != nil {
@@ -64,7 +64,7 @@ func TestCertificateRequestServiceForClient(t *testing.T) {
 		Province:     "South-West",
 	}
 
-	service.KeyStrength = 4096
+	service.RSAKeyStrength = 4096
 	service.LifeTime = (time.Hour * 8760)
 	service.Emails = append([]string{}, "alex.ewetumo@dreambench.io")
 
@@ -81,7 +81,7 @@ func TestCertificateRequestServiceForClient(t *testing.T) {
 		Country:      "Nigeria",
 		Province:     "South-West",
 	}
-	requestService.KeyStrength = 2048
+	requestService.RSAKeyStrength = 2048
 
 	reqCA, err := certificates.CreateCertificateRequest(requestService)
 	if err != nil {
@@ -120,7 +120,7 @@ func TestCertificateRequestServiceForServer(t *testing.T) {
 		Province:     "South-West",
 	}
 
-	service.KeyStrength = 4096
+	service.RSAKeyStrength = 4096
 	service.LifeTime = (time.Hour * 8760)
 	service.Emails = append([]string{}, "alex.ewetumo@dreambench.io")
 
@@ -137,7 +137,7 @@ func TestCertificateRequestServiceForServer(t *testing.T) {
 		Country:      "Nigeria",
 		Province:     "South-West",
 	}
-	requestService.KeyStrength = 2048
+	requestService.RSAKeyStrength = 2048
 
 	reqCA, err := certificates.CreateCertificateRequest(requestService)
 	if err != nil {
@@ -176,7 +176,7 @@ func TestCertificateRequestServiceForClientWithVerify(t *testing.T) {
 		Province:     "South-West",
 	}
 
-	service.KeyStrength = 4096
+	service.RSAKeyStrength = 4096
 	service.LifeTime = (time.Hour * 8760)
 	service.Emails = append([]string{}, "alex.ewetumo@dreambench.io")
 
@@ -193,7 +193,7 @@ func TestCertificateRequestServiceForClientWithVerify(t *testing.T) {
 		Country:      "Nigeria",
 		Province:     "South-West",
 	}
-	requestService.KeyStrength = 2048
+	requestService.RSAKeyStrength = 2048
 
 	reqCA, err := certificates.CreateCertificateRequest(requestService)
 	if err != nil {
@@ -238,7 +238,7 @@ func TestCreateCACertificate(t *testing.T) {
 		Province:     "South-West",
 	}
 
-	service.KeyStrength = 4096
+	service.RSAKeyStrength = 4096
 	service.LifeTime = (time.Hour * 8760)
 	service.Emails = append([]string{}, "alex.ewetumo@dreambench.io")
 

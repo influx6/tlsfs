@@ -82,6 +82,9 @@ const (
 
 	// OneYear sets the duration representing the number of hours in all the days in a year.
 	OneYear = time.Hour * 8766
+
+	// ThreeMonths sets the duration of representing the number of hours in a 3 months period.
+	ThreeMonths = time.Hour * 2190
 )
 
 const (

@@ -146,8 +146,8 @@ func (sca SecondaryCertificateAuthority) CertificateRaw() ([]byte, error) {
 // associated private and public keys.
 type CertificateAuthority struct {
 	KeyType     PrivateKeyType
-	PrivateKey  interface{}
-	PublicKey   interface{}
+	PrivateKey  crypto.PrivateKey
+	PublicKey   crypto.PublicKey
 	Certificate *x509.Certificate
 }
 
@@ -371,13 +371,11 @@ type CertificateAuthorityProfile struct {
 	RSAKeyStrength int
 
 	// Version field of certificate request.
+	// The version number is to be based on the tls version constants.
 	Version int
 
 	// Lifetime of certificate authority.
 	LifeTime time.Duration
-
-	// SignatureAlgorithm for creating certificates with.
-	SignatureAlgorithm x509.SignatureAlgorithm
 
 	KeyUsages []x509.ExtKeyUsage
 	Emails    []string
@@ -397,6 +395,9 @@ type CertificateAuthorityProfile struct {
 // the necessary interface to write given certificate data into memory or
 // into a given store.
 func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAuthority, error) {
+	var err error
+	var ca CertificateAuthority
+
 	if cas.ECCurve == nil {
 		cas.ECCurve = elliptic.P384()
 	}
@@ -405,8 +406,9 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 		cas.RSAKeyStrength = 2048
 	}
 
-	var err error
-	var ca CertificateAuthority
+	if cas.PrivateKeyType < RSAKeyType {
+		cas.PrivateKeyType = ECDSAKeyType
+	}
 
 	if cas.PrivateKey == nil {
 		switch cas.PrivateKeyType {
@@ -421,6 +423,8 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 			if err != nil {
 				return ca, err
 			}
+		default:
+			return ca, ErrUnknownPrivateKeyType
 		}
 
 		ca.KeyType = cas.PrivateKeyType
@@ -429,13 +433,34 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 		case *rsa.PrivateKey:
 			ca.PrivateKey = ky
 			ca.KeyType = RSAKeyType
-			ca.PublicKey = ky.PublicKey
+			ca.PublicKey = &ky.PublicKey
 		case *ecdsa.PrivateKey:
 			ca.PrivateKey = ky
 			ca.KeyType = ECDSAKeyType
-			ca.PublicKey = ky.PublicKey
+			ca.PublicKey = &ky.PublicKey
 		default:
 			return ca, ErrUnknownPrivateKeyType
+		}
+	}
+
+	// Identify signature to be used for algorithm for certificate.
+	var signature x509.SignatureAlgorithm
+	switch ca.KeyType {
+	case RSAKeyType:
+		signature = x509.SHA512WithRSA
+		//switch cas.RSAKeyStrength {
+		//case 2048:
+		//case 4096:
+		//case 8192:
+		//}
+	case ECDSAKeyType:
+		switch cas.ECCurve {
+		case elliptic.P256():
+			signature = x509.ECDSAWithSHA256
+		case elliptic.P384():
+			signature = x509.ECDSAWithSHA384
+		case elliptic.P521():
+			signature = x509.ECDSAWithSHA512
 		}
 	}
 
@@ -446,9 +471,6 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 	}
 
 	ca.KeyType = cas.PrivateKeyType
-	if cas.SignatureAlgorithm <= 0 {
-		cas.SignatureAlgorithm = x509.SHA256WithRSA
-	}
 
 	var ips []net.IP
 
@@ -479,7 +501,7 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 	template.BasicConstraintsValid = true
 	template.NotAfter = before.Add(cas.LifeTime)
 	template.ExcludedDNSDomains = cas.ExedDNSNames
-	template.SignatureAlgorithm = cas.SignatureAlgorithm
+	template.SignatureAlgorithm = signature
 	template.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
 	template.ExtKeyUsage = append([]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}, cas.KeyUsages...)
 
@@ -536,10 +558,8 @@ type CertificateRequestProfile struct {
 	// RSAStrength defines the strength to the use of the key type.
 	RSAKeyStrength int
 
-	// SignatureAlgorithm for creating certificates with.
-	SignatureAlgorithm x509.SignatureAlgorithm
-
 	// Version field of certificate request.
+	// The version number is to be based on the tls version constants.
 	Version int
 
 	// Emails and ip address allowed.
@@ -568,6 +588,10 @@ func CreateCertificateRequest(cas CertificateRequestProfile) (CertificateRequest
 		cas.RSAKeyStrength = 2048
 	}
 
+	if cas.PrivateKeyType < RSAKeyType {
+		cas.PrivateKeyType = ECDSAKeyType
+	}
+
 	var err error
 	var ca CertificateRequest
 
@@ -584,6 +608,8 @@ func CreateCertificateRequest(cas CertificateRequestProfile) (CertificateRequest
 			if err != nil {
 				return ca, err
 			}
+		default:
+			return ca, ErrUnknownPrivateKeyType
 		}
 
 		ca.KeyType = cas.PrivateKeyType
@@ -592,18 +618,35 @@ func CreateCertificateRequest(cas CertificateRequestProfile) (CertificateRequest
 		case *rsa.PrivateKey:
 			ca.PrivateKey = ky
 			ca.KeyType = RSAKeyType
-			ca.PublicKey = ky.PublicKey
+			ca.PublicKey = &ky.PublicKey
 		case *ecdsa.PrivateKey:
 			ca.PrivateKey = ky
 			ca.KeyType = ECDSAKeyType
-			ca.PublicKey = ky.PublicKey
+			ca.PublicKey = &ky.PublicKey
 		default:
 			return ca, ErrUnknownPrivateKeyType
 		}
 	}
 
-	if cas.SignatureAlgorithm <= 0 {
-		cas.SignatureAlgorithm = x509.SHA256WithRSA
+	// Identify signature to be used for algorithm for certificate.
+	var signature x509.SignatureAlgorithm
+	switch ca.KeyType {
+	case RSAKeyType:
+		signature = x509.SHA512WithRSA
+		//switch cas.RSAKeyStrength {
+		//case 2048:
+		//case 4096:
+		//case 8192:
+		//}
+	case ECDSAKeyType:
+		switch cas.ECCurve {
+		case elliptic.P256():
+			signature = x509.ECDSAWithSHA256
+		case elliptic.P384():
+			signature = x509.ECDSAWithSHA384
+		case elliptic.P521():
+			signature = x509.ECDSAWithSHA512
+		}
 	}
 
 	var ips []net.IP
@@ -627,7 +670,7 @@ func CreateCertificateRequest(cas CertificateRequestProfile) (CertificateRequest
 	template.Subject = profile
 	template.DNSNames = cas.DNSNames
 	template.EmailAddresses = cas.Emails
-	template.SignatureAlgorithm = cas.SignatureAlgorithm
+	template.SignatureAlgorithm = signature
 
 	certData, err := x509.CreateCertificateRequest(rand.Reader, &template, ca.PrivateKey)
 	if err != nil {
@@ -648,8 +691,8 @@ func CreateCertificateRequest(cas CertificateRequestProfile) (CertificateRequest
 // associated private and public keys.
 type CertificateRequest struct {
 	KeyType     PrivateKeyType
-	PrivateKey  interface{}
-	PublicKey   interface{}
+	PrivateKey  crypto.PrivateKey
+	PublicKey   crypto.PublicKey
 	Request     *x509.CertificateRequest
 	SecondaryCA SecondaryCertificateAuthority
 }
@@ -833,7 +876,7 @@ func GetPrivateKeyType(privateKey crypto.PrivateKey) PrivateKeyType {
 // CreateRSAKey defines a function which will return a private and public key, and any
 // error that may occur. It uses the strength argument if the key type is for rsa and uses
 // the curve argument if it's a ecdsa key type.
-func CreateRSAKey(strength int) (privateKey interface{}, publicKey interface{}, err error) {
+func CreateRSAKey(strength int) (privateKey crypto.PrivateKey, publicKey crypto.PublicKey, err error) {
 	pkey, perr := rsa.GenerateKey(rand.Reader, strength)
 	if perr != nil {
 		err = perr
@@ -846,7 +889,7 @@ func CreateRSAKey(strength int) (privateKey interface{}, publicKey interface{}, 
 }
 
 // CreateECKey defines a function which will return a private and public key using the ecdsa generator.
-func CreateECKey(curve elliptic.Curve) (privateKey interface{}, publicKey interface{}, err error) {
+func CreateECKey(curve elliptic.Curve) (privateKey crypto.PrivateKey, publicKey crypto.PublicKey, err error) {
 	pkey, perr := ecdsa.GenerateKey(curve, rand.Reader)
 	if perr != nil {
 		err = perr

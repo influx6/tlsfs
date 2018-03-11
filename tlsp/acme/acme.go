@@ -124,6 +124,10 @@ type Config struct {
 // config struct, setting the important default fields
 // with default values.
 func (c *Config) init() {
+	if c.CAURL == "" {
+		c.CAURL = letsEncryptDirURL
+	}
+
 	// Validate and reset state as needed for when dns is enabled
 	// as a challenge option the DNSChallengeProvider.
 	if c.EnableDNS01Challenge {
@@ -892,9 +896,9 @@ func (acm *AcmeFS) saveDomain(cert tlsfs.TLSDomainCertificate) error {
 	}
 
 	// Delete cached domain.
-	cm.ccl.Lock()
-	delete(cm.certCache, es)
-	cm.ccl.Unlock()
+	acm.ccl.Lock()
+	delete(acm.certCache, es)
+	acm.ccl.Unlock()
 	return nil
 }
 

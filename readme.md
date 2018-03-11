@@ -7,3 +7,6 @@ Filesystem-like library for quick generation of tls based certificates stored an
 ```bash
 go get -u github.com/wirekit/tlsfs
 ```
+
+## Vendoring
+Vendoring was done with [Govendor](https://github.com/kardianos/govendor).

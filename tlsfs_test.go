@@ -17,7 +17,7 @@ func TestZapFile_Gzip(t *testing.T) {
 	zfile.Name = "warzone-drs"
 	zfile.Tracks = append(zfile.Tracks, track)
 
-	if _, err := zfile.Find("warzone-drs"); err != nil {
+	if _, err := zfile.Find("warzone.txt"); err != nil {
 		tests.FailedWithError(err, "Should have retrieved given zap track")
 	}
 	tests.Passed("Should have retrieved given zap track")
