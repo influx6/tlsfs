@@ -353,6 +353,12 @@ type CertificateAuthorityProfile struct {
 	Postal       string `json:"postal"`
 	CommonName   string `json:"common_name"`
 
+	// PrivateKey is for optional generated private to be used
+	// instead of the the generating one for the request profile.
+	// If this is present the PrivateKeyType, ECCurve and RSAKeyStrength
+	// will be ignored.
+	PrivateKey crypto.PrivateKey
+
 	// PrivateKeyType defines the expected private key to
 	// be used to create the ca key. See private key type
 	// constants.
@@ -364,7 +370,7 @@ type CertificateAuthorityProfile struct {
 	// RSAStrength defines the strength to the use of the key type.
 	RSAKeyStrength int
 
-	// Public and Private key configuration fields.
+	// Version field of certificate request.
 	Version int
 
 	// Lifetime of certificate authority.
@@ -402,17 +408,34 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 	var err error
 	var ca CertificateAuthority
 
-	switch cas.PrivateKeyType {
-	case RSAKeyType:
-		ca.PrivateKey, ca.PublicKey, err = CreateRSAKey(cas.RSAKeyStrength)
-		if err != nil {
-			return ca, err
+	if cas.PrivateKey == nil {
+		switch cas.PrivateKeyType {
+		case RSAKeyType:
+			ca.PrivateKey, ca.PublicKey, err = CreateRSAKey(cas.RSAKeyStrength)
+			if err != nil {
+				return ca, err
+			}
+
+		case ECDSAKeyType:
+			ca.PrivateKey, ca.PublicKey, err = CreateECKey(cas.ECCurve)
+			if err != nil {
+				return ca, err
+			}
 		}
 
-	case ECDSAKeyType:
-		ca.PrivateKey, ca.PublicKey, err = CreateECKey(cas.ECCurve)
-		if err != nil {
-			return ca, err
+		ca.KeyType = cas.PrivateKeyType
+	} else {
+		switch ky := cas.PrivateKey.(type) {
+		case *rsa.PrivateKey:
+			ca.PrivateKey = ky
+			ca.KeyType = RSAKeyType
+			ca.PublicKey = ky.PublicKey
+		case *ecdsa.PrivateKey:
+			ca.PrivateKey = ky
+			ca.KeyType = ECDSAKeyType
+			ca.PublicKey = ky.PublicKey
+		default:
+			return ca, ErrUnknownPrivateKeyType
 		}
 	}
 
@@ -481,7 +504,7 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 }
 
 //********************************************************************************************
-// CertificateReuqestProfile Implementation
+// CertificateRequestProfile Implementation
 //********************************************************************************************
 
 // CertificateRequestProfile generates a certificate request with associated private key
@@ -495,6 +518,12 @@ type CertificateRequestProfile struct {
 	Address      string `json:"address"`
 	Postal       string `json:"postal"`
 	CommonName   string `json:"common_name"`
+
+	// PrivateKey is for optional generated private to be used
+	// instead of the the generating one for the request profile.
+	// If this is present the PrivateKeyType, ECCurve and RSAKeyStrength
+	// will be ignored.
+	PrivateKey crypto.PrivateKey
 
 	// PrivateKeyType defines the expected private key to
 	// be used to create the ca key. See private key type
@@ -510,7 +539,7 @@ type CertificateRequestProfile struct {
 	// SignatureAlgorithm for creating certificates with.
 	SignatureAlgorithm x509.SignatureAlgorithm
 
-	// Public and Private key configuration fields.
+	// Version field of certificate request.
 	Version int
 
 	// Emails and ip address allowed.
@@ -542,21 +571,37 @@ func CreateCertificateRequest(cas CertificateRequestProfile) (CertificateRequest
 	var err error
 	var ca CertificateRequest
 
-	switch cas.PrivateKeyType {
-	case RSAKeyType:
-		ca.PrivateKey, ca.PublicKey, err = CreateRSAKey(cas.RSAKeyStrength)
-		if err != nil {
-			return ca, err
+	if cas.PrivateKey == nil {
+		switch cas.PrivateKeyType {
+		case RSAKeyType:
+			ca.PrivateKey, ca.PublicKey, err = CreateRSAKey(cas.RSAKeyStrength)
+			if err != nil {
+				return ca, err
+			}
+
+		case ECDSAKeyType:
+			ca.PrivateKey, ca.PublicKey, err = CreateECKey(cas.ECCurve)
+			if err != nil {
+				return ca, err
+			}
 		}
 
-	case ECDSAKeyType:
-		ca.PrivateKey, ca.PublicKey, err = CreateECKey(cas.ECCurve)
-		if err != nil {
-			return ca, err
+		ca.KeyType = cas.PrivateKeyType
+	} else {
+		switch ky := cas.PrivateKey.(type) {
+		case *rsa.PrivateKey:
+			ca.PrivateKey = ky
+			ca.KeyType = RSAKeyType
+			ca.PublicKey = ky.PublicKey
+		case *ecdsa.PrivateKey:
+			ca.PrivateKey = ky
+			ca.KeyType = ECDSAKeyType
+			ca.PublicKey = ky.PublicKey
+		default:
+			return ca, ErrUnknownPrivateKeyType
 		}
 	}
 
-	ca.KeyType = cas.PrivateKeyType
 	if cas.SignatureAlgorithm <= 0 {
 		cas.SignatureAlgorithm = x509.SHA256WithRSA
 	}

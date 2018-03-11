@@ -335,6 +335,9 @@ func (acm *AcmeFS) All() ([]tlsfs.DomainAccount, error) {
 // If a renewal failed and the certificate is less than two weeks to expiry or within the
 // 30-days expiration, then the certificate is returned with an appropriate status to
 // indicate non-critical but important reason of failure.
+// NOTE: With Lets Encrypt, we do not have control over the value of the common name passed
+// to the certificate request on the CA side, so the tlsfs.NewDomian.CommonName and
+// tlsfs.NewDomian.DNSNames is ignored.
 func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
 	// Ensure all domain is in lowercase.
 	acct.Domain = strings.ToLower(acct.Domain)
@@ -358,6 +361,9 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 				tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrInvalidDomain),
 				tlsfs.ErrInvalidDomain
 		}
+
+		user = new(userAcct)
+		user.Email = acct.Email
 
 		switch acct.KeyType {
 		case tlsfs.RSA2048:
@@ -425,17 +431,21 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 		}
 	}
 
+	// If there exists a already signed certificate for this domain by this user, then
+	// retrieve certificate, validate it is not yet expired by it's status and return
+	// else renew certificate if about to expire or revoke if it has expired and move to
+	// create new one.
 	if existingDomain, err := acm.readDomainFrom(acct.Email, acct.Domain); err == nil {
 		currentStatus := acm.getDomainStatus(existingDomain.Certificate)
 
 		switch currentStatus.Flag() {
+		case tlsfs.CARenewedRequired, tlsfs.CACriticalRenewedRequired:
+			return acm.Renew(acct.Email, acct.Domain)
 		case tlsfs.CACExpired:
 			if err := acm.Revoke(acct.Email, acct.Domain); err != nil {
 				return tlsfs.TLSDomainCertificate{},
 					tlsfs.WithStatus(tlsfs.OPFailed, errors.New("expired certificate")), err
 			}
-		case tlsfs.CARenewedRequired, tlsfs.CACriticalRenewedRequired:
-			return acm.Renew(acct.Email, acct.Domain)
 		default:
 			return existingDomain, currentStatus, nil
 		}
@@ -476,8 +486,6 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 		domainClient.SetChallengeProvider(acme.DNS01, acm.config.DNSProvider)
 	}
 
-	var bundled acme.CertificateResource
-
 	var doma tlsfs.TLSDomainCertificate
 	doma.User = acct.Email
 	doma.Domain = acct.Domain
@@ -485,6 +493,7 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 	// Attempt to retrieve certificate at most 3 times, combine all errors
 	// if we fail to get a valid response from server.
 	var tErrs []error
+	var bundled acme.CertificateResource
 	for attempts := 0; attempts > 3; attempts++ {
 		bundle, failures := domainClient.ObtainCertificate(
 			[]string{acct.Domain},
@@ -708,11 +717,7 @@ func (acm *AcmeFS) getDomainStatus(cert *x509.Certificate) tlsfs.Status {
 	}
 
 	left := today.Sub(expires)
-	if left >= tlsfs.Live30Days {
-		return tlsfs.WithStatus(tlsfs.CARenewedRequired, nil)
-	}
-
-	if left < tlsfs.Live30Days && left > tlsfs.Live2Weeks {
+	if left <= tlsfs.Live30Days && left > tlsfs.Live2Weeks {
 		return tlsfs.WithStatus(tlsfs.CARenewedRequired, nil)
 	}
 
@@ -881,7 +886,16 @@ func (acm *AcmeFS) saveDomain(cert tlsfs.TLSDomainCertificate) error {
 		return err
 	}
 
-	return writer.Flush()
+	// Flush all data into filesystem.
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+
+	// Delete cached domain.
+	cm.ccl.Lock()
+	delete(cm.certCache, es)
+	cm.ccl.Unlock()
+	return nil
 }
 
 func (acm *AcmeFS) readDomain(zapFile tlsfs.ZapFile) (tlsfs.TLSDomainCertificate, error) {

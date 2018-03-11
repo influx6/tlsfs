@@ -14,11 +14,12 @@ import (
 
 	"crypto/md5"
 
+	"crypto/elliptic"
+
 	"github.com/wirekit/tlsfs"
 	"github.com/wirekit/tlsfs/certificates"
 	"github.com/wirekit/tlsfs/fs/sysfs"
 	"github.com/wirekit/tlsfs/tlsp"
-	"github.com/xenolf/lego/acme"
 )
 
 var (
@@ -27,9 +28,10 @@ var (
 )
 
 const (
-	// CAExpiration defines the default total years allowed for a CA to exists before
-	// expiration. It is used in the generation of certificates for the CustomFS.
-	CAExpiration = tlsfs.OneYear * 5
+	// this defines a 3-months (90 days) duration which
+	// provides the total time for the lifetime of a signed
+	// certificate.
+	threeMonths = tlsfs.Live30Days * 3
 )
 
 //*************************************************************************
@@ -94,10 +96,87 @@ func (c *Config) init() error {
 		c.SigningLifeTime = tlsfs.OneYear
 	}
 
+	if c.Profile.ECCurve == nil {
+		c.Profile.ECCurve = elliptic.P384()
+	}
+
+	if c.Profile.RSAKeyStrength < 2048 {
+		c.Profile.RSAKeyStrength = 4096
+	}
+
+	if c.Profile.CommonName == "" {
+		c.Profile.CommonName = "*"
+	}
+
 	// if a configuration file exists, then read it and ensure CA has not
 	// expired.
-	if configZap, err := c.RootFilesystem.Read("config"); err == nil {
+	if configZap, err := c.RootFilesystem.Read("ca-config"); err == nil {
+		certZap, err := configZap.Find("root-ca")
+		if err != nil {
+			return err
+		}
+
+		decodedCA, err := certificates.DecodeCertificate(certZap.Data)
+		if err != nil {
+			return err
+		}
+
+		// if loaded certificate is still valid, then attempt to load certificate
+		// key into configuration.
+		today := time.Now()
+		if today.After(decodedCA.NotAfter) {
+			keyZap, err := configZap.Find("root-key")
+			if err != nil {
+				return err
+			}
+
+			_, decodedKey, err := certificates.DecodePrivateKey(keyZap.Data)
+			if err != nil {
+				return err
+			}
+
+			if c.rootCA == nil {
+				c.rootCA = new(certificates.CertificateAuthority)
+			}
+
+			c.rootCA.Certificate = decodedCA
+			c.rootCA.PrivateKey = decodedKey
+			return nil
+		}
 	}
+
+	// generate CA certificate for configuration, as it provides the issuer
+	// certificate to be used for signing others.
+	rootCA, err := certificates.CreateCertificateAuthority(c.Profile)
+	if err != nil {
+		return err
+	}
+
+	configWriter, err := c.RootFilesystem.Write("ca-config")
+	if err != nil {
+		return err
+	}
+
+	// Save certificate and private-key as zap file.
+	encodedCA, err := rootCA.CertificateRaw()
+	if err != nil {
+		return err
+	}
+
+	configWriter.Add("root-ca", encodedCA)
+
+	encodedKey, err := rootCA.PrivateKeyRaw()
+	if err != nil {
+		return err
+	}
+
+	configWriter.Add("root-key", encodedKey)
+
+	if err = configWriter.Flush(); err != nil {
+		return err
+	}
+
+	c.rootCA = &rootCA
 
 	return nil
 }
@@ -142,9 +221,12 @@ func (cm *CustomFS) GetUser(email string) (tlsfs.Account, error) {
 // Revoke attempts to revoke the existing certificate associated with
 // the user's email and domain. If certificate is pending renewal then
 // it will wait until the end of the renewal before making an attempt
-// to revoke certificate. Once revoked, then certificate is deleted.
-// If revokation fails, the certificate is kept in the filesystem, till
-// a revoke is successfully through the CA.
+// to revoke certificate. This is a custom lightweight CA, that has
+// no revoked db that stores certificates that have being revoked.
+// Hence a revoke call simply removes the certificate from the
+// filesystem and cache, which ensures no other can gain access to it,
+// but those who had access before the call to revoke will still
+// be able to use certificate till expiry.
 func (cm *CustomFS) Revoke(email string, domain string) error {
 	signature := getSignature(email, domain)
 
@@ -163,6 +245,7 @@ func (cm *CustomFS) Revoke(email string, domain string) error {
 	delete(cm.certCache, signature)
 	cm.ccl.Unlock()
 
+	// Remove domain certificate from filesystem.
 	if err := cm.config.CertificatesFileSystem.Remove(signature); err != nil {
 		if _, ok := err.(tlsfs.NotExists); !ok {
 			return err
@@ -223,6 +306,12 @@ func (cm *CustomFS) All() ([]tlsfs.DomainAccount, error) {
 // 30-days expiration, then the certificate is returned with an appropriate status to
 // indicate non-critical but important reason of failure.
 func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
+	// We need to ensure that the common name to be provided has a value else
+	// provide it a "*" asterick to allow use with any domain.
+	if acct.CommonName == "" {
+		acct.CommonName = "*"
+	}
+
 	// Ensure all domain is in lowercase.
 	acct.Domain = strings.ToLower(acct.Domain)
 
@@ -244,29 +333,122 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 				tlsfs.ErrInvalidDomain
 		}
 
-		//// Attempt to save the user immediately.
-		//if err := cm.saveUser(acct.Email, user.PrivateKey, user.Resource); err != nil {
-		//	return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
-		//}
+		user = new(userAcct)
+		user.Email = acct.Email
+
+		switch acct.KeyType {
+		case tlsfs.RSA2048:
+			if user.PrivateKey, _, err = certificates.CreateRSAKey(2048); err != nil {
+				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+			}
+		case tlsfs.RSA4096:
+			if user.PrivateKey, _, err = certificates.CreateRSAKey(4096); err != nil {
+				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+			}
+		case tlsfs.RSA8192:
+			if user.PrivateKey, _, err = certificates.CreateRSAKey(8192); err != nil {
+				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+			}
+		case tlsfs.ECKey256:
+			if user.PrivateKey, _, err = certificates.CreateECKey(elliptic.P256()); err != nil {
+				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+			}
+		case tlsfs.ECKey384:
+			if user.PrivateKey, _, err = certificates.CreateECKey(elliptic.P384()); err != nil {
+				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+			}
+		case tlsfs.ECKey512:
+			if user.PrivateKey, _, err = certificates.CreateECKey(elliptic.P521()); err != nil {
+				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+			}
+		default:
+			return tlsfs.TLSDomainCertificate{},
+				tlsfs.WithStatus(tlsfs.OPFailed, certificates.ErrUnknownPrivateKeyType),
+				certificates.ErrUnknownPrivateKeyType
+		}
+
+		// Attempt to save the user immediately.
+		if err := cm.saveUser(acct.Email, user.PrivateKey); err != nil {
+			return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+		}
 	}
 
+	// If there exists a already signed certificate for this domain by this user, then
+	// retrieve certificate, validate it is not yet expired by it's status and return
+	// else renew certificate if about to expire or revoke if it has expired and move to
+	// create new one.
 	if existingDomain, err := cm.readDomainFrom(acct.Email, acct.Domain); err == nil {
 		currentStatus := cm.getDomainStatus(existingDomain.Certificate)
 
 		switch currentStatus.Flag() {
+		case tlsfs.CARenewedRequired, tlsfs.CACriticalRenewedRequired:
+			return cm.Renew(acct.Email, acct.Domain)
 		case tlsfs.CACExpired:
 			if err := cm.Revoke(acct.Email, acct.Domain); err != nil {
 				return tlsfs.TLSDomainCertificate{},
 					tlsfs.WithStatus(tlsfs.OPFailed, errors.New("expired certificate")), err
 			}
-		case tlsfs.CARenewedRequired, tlsfs.CACriticalRenewedRequired:
-			return cm.Renew(acct.Email, acct.Domain)
 		default:
 			return existingDomain, currentStatus, nil
 		}
 	}
 
+	// Identify signature to be used for algorithmn for certificate.
+	var signature x509.SignatureAlgorithm
+	switch certificates.GetPrivateKeyType(user.PrivateKey) {
+	case certificates.RSAKeyType:
+		signature = x509.SHA512WithRSA
+	case certificates.ECDSAKeyType:
+		switch acct.KeyType {
+		case tlsfs.ECKey256:
+			signature = x509.ECDSAWithSHA256
+		case tlsfs.ECKey384:
+			signature = x509.ECDSAWithSHA384
+		case tlsfs.ECKey512:
+			signature = x509.ECDSAWithSHA512
+		}
+	}
+
+	// Create certificate request for this domain, add the common name
+	// and dns names to the ceriticate request.
+	var profile certificates.CertificateRequestProfile
+	profile.Local = acct.Local
+	profile.Postal = acct.Postal
+	profile.Version = acct.Version
+	profile.Address = acct.Address
+	profile.Country = acct.Country
+	profile.Province = acct.Province
+	profile.CommonName = acct.CommonName
+	profile.SignatureAlgorithm = signature
+	profile.Organization = acct.CommonName
+	profile.PrivateKey = user.GetPrivateKey()
+	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
+
+	// Sign and create official x509.CertificateRequest from profile.
+	request, err := certificates.CreateCertificateRequest(profile)
+	if err != nil {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to generate certificate request")), err
+	}
+
+	// Approve requests for client and server usage, so user can use it in either way.
+	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, threeMonths); err != nil {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to sign client certificate")), err
+	}
+
 	var doma tlsfs.TLSDomainCertificate
+	doma.Bundle = acct
+	doma.User = acct.Email
+	doma.Domain = acct.Domain
+	doma.Request = request.Request
+	doma.Certificate = request.SecondaryCA.Certificate
+	doma.IssuerCertificate = request.SecondaryCA.RootCA
+
+	if err := cm.saveDomain(doma); err != nil {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to save client certificate")), err
+	}
 
 	return doma, cm.getDomainStatus(doma.Certificate), nil
 }
@@ -281,13 +463,13 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 // 30-days expiration, then the certificate is returned with an appropriate status to
 // indicate non-critical but important reason of failure.
 func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
-	signature := getSignature(email, domain)
+	mysignature := getSignature(email, domain)
 
 	// We first must validate that no previous renewal is
 	// not already underway for giving domain. If there is:
 	// then we just read from that when it's done instead.
 	cm.rcl.Lock()
-	if _, ok := cm.renewedCache[signature]; ok {
+	if _, ok := cm.renewedCache[mysignature]; ok {
 		cm.rcl.Unlock()
 
 		// We simply call readDomainFrom which handles gracefully
@@ -312,13 +494,15 @@ func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertifica
 		return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
 	}
 
+	acct := existingDomain.Bundle.(tlsfs.NewDomain)
+
 	// We need to allocate a renew channel for others to be aware of the fact
 	// that the domain certificate is being renewed.
 	renewal := make(chan struct{})
 
 	// Ensure to added renewed channel into existing channel.
 	cm.rcl.Lock()
-	cm.renewedCache[signature] = renewal
+	cm.renewedCache[mysignature] = renewal
 	cm.rcl.Unlock()
 
 	// We need to ensure the renewed channel is closed and removed from
@@ -328,9 +512,67 @@ func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertifica
 		close(renewal)
 
 		cm.rcl.Lock()
-		delete(cm.renewedCache, signature)
+		delete(cm.renewedCache, mysignature)
 		cm.rcl.Unlock()
 	}()
+
+	// Identify signature to be used for algorithmn for certificate.
+	var signature x509.SignatureAlgorithm
+	switch certificates.GetPrivateKeyType(user.PrivateKey) {
+	case certificates.RSAKeyType:
+		signature = x509.SHA512WithRSA
+	case certificates.ECDSAKeyType:
+		switch acct.KeyType {
+		case tlsfs.ECKey256:
+			signature = x509.ECDSAWithSHA256
+		case tlsfs.ECKey384:
+			signature = x509.ECDSAWithSHA384
+		case tlsfs.ECKey512:
+			signature = x509.ECDSAWithSHA512
+		}
+	}
+
+	// Create certificate request for this domain, add the common name
+	// and dns names to the ceriticate request.
+	var profile certificates.CertificateRequestProfile
+	profile.Local = acct.Local
+	profile.Postal = acct.Postal
+	profile.Version = acct.Version
+	profile.Address = acct.Address
+	profile.Country = acct.Country
+	profile.Province = acct.Province
+	profile.PrivateKey = user.PrivateKey
+	profile.CommonName = acct.CommonName
+	profile.SignatureAlgorithm = signature
+	profile.Organization = acct.CommonName
+	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
+
+	// Sign and recreate official x509.CertificateRequest from profile.
+	request, err := certificates.CreateCertificateRequest(profile)
+	if err != nil {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to generate certificate request")), err
+	}
+
+	// Approve requests for client and server usage, so user can use it in either way.
+	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, threeMonths); err != nil {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to sign client certificate")), err
+	}
+
+	// Generate new TLSDomainCertificate and replace old certificat.
+	var doma tlsfs.TLSDomainCertificate
+	doma.Bundle = acct
+	doma.User = acct.Email
+	doma.Domain = acct.Domain
+	doma.Request = request.Request
+	doma.Certificate = request.SecondaryCA.Certificate
+	doma.IssuerCertificate = request.SecondaryCA.RootCA
+
+	if err := cm.saveDomain(doma); err != nil {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to save client certificate")), err
+	}
 
 	return existingDomain, tlsfs.WithStatus(tlsfs.Renewed, nil), nil
 }
@@ -371,11 +613,7 @@ func (cm *CustomFS) getDomainStatus(cert *x509.Certificate) tlsfs.Status {
 	}
 
 	left := today.Sub(expires)
-	if left >= tlsfs.Live30Days {
-		return tlsfs.WithStatus(tlsfs.CARenewedRequired, nil)
-	}
-
-	if left < tlsfs.Live30Days && left > tlsfs.Live2Weeks {
+	if left <= tlsfs.Live30Days && left > tlsfs.Live2Weeks {
 		return tlsfs.WithStatus(tlsfs.CARenewedRequired, nil)
 	}
 
@@ -544,7 +782,16 @@ func (cm *CustomFS) saveDomain(cert tlsfs.TLSDomainCertificate) error {
 		return err
 	}
 
-	return writer.Flush()
+	// Flush all data into filesystem.
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+
+	// Delete cached domain.
+	cm.ccl.Lock()
+	delete(cm.certCache, es)
+	cm.ccl.Unlock()
+	return nil
 }
 
 func (cm *CustomFS) readDomain(zapFile tlsfs.ZapFile) (tlsfs.TLSDomainCertificate, error) {
@@ -605,7 +852,7 @@ func (cm *CustomFS) readDomain(zapFile tlsfs.ZapFile) (tlsfs.TLSDomainCertificat
 		return tacc, tlsfs.ErrErrCertificateHasNoBundle
 	}
 
-	var bundle acme.CertificateResource
+	var bundle tlsfs.NewDomain
 	if err := json.Unmarshal(bundleCert.Data, &bundle); err != nil {
 		return tacc, err
 	}
@@ -671,20 +918,10 @@ func (cm *CustomFS) readUser(zapFile tlsfs.ZapFile) (*userAcct, error) {
 
 	user.PrivateKey = pkey
 
-	//registration, err := zapFile.Find(tlsfs.DomainUserRegistrationDataZapName)
-	//if err != nil {
-	//	return nil, tlsfs.ErrZapFileHasNoUserRegistrationData
-	//}
-	//
-	//// unmarshal account information for domain.
-	//if err := json.Unmarshal(registration.Data, &user.Resource); err != nil {
-	//	return nil, err
-	//}
-
 	return &user, nil
 }
 
-func (cm *CustomFS) saveUser(email string, privateKey crypto.PrivateKey, reg *acme.RegistrationResource) error {
+func (cm *CustomFS) saveUser(email string, privateKey crypto.PrivateKey) error {
 	es := getSignature(email, "")
 	writer, err := cm.config.UsersFileSystem.Write(es)
 	if err != nil {
@@ -692,15 +929,6 @@ func (cm *CustomFS) saveUser(email string, privateKey crypto.PrivateKey, reg *ac
 	}
 
 	if err := writer.Add(tlsfs.DomainUserDataZapName, []byte(email)); err != nil {
-		return err
-	}
-
-	regJSON, err := json.Marshal(reg)
-	if err != nil {
-		return err
-	}
-
-	if err := writer.Add(tlsfs.DomainUserRegistrationDataZapName, regJSON); err != nil {
 		return err
 	}
 

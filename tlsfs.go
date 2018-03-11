@@ -282,6 +282,17 @@ type NewDomain struct {
 	KeyType    KeyType `json:"type" description:"key type for private key"`
 	Domain     string  `json:"domain" description:"domain for certificate creation"`
 	CommonName string  `json:"common_name" description:"common name for certificate must not be empty else put '*'"`
+
+	// Optional fields providing extra meta-data, most CA especially like
+	// LetsEncrypt, who will not use these, as it will retrieve from Domain
+	// through AAA dns record.
+	Version  int      `json:"version" description:"version to be used for generated certificate"`
+	Country  string   `json:"country" description:"country of owner of certificate"`
+	Province string   `json:"province" description:"province of owner of certificate"`
+	Local    string   `json:"local" description:"locality of owner of certificate"`
+	Address  string   `json:"address" description:"address of owner of certificate"`
+	Postal   string   `json:"postal" description:"postal address for certificate"`
+	DNSNames []string `json:"dns_names" description:"SNI-compliant names to be added to certificate request"`
 }
 
 // Account defines a type which represents a given registered
