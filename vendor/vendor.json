@@ -15,22 +15,107 @@
 			"revisionTime": "2018-03-03T19:20:10Z"
 		},
 		{
+			"checksumSHA1": "c8Hh4p3yG22nKc8L6dBzto0bvFc=",
+			"path": "github.com/miekg/dns",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
 			"checksumSHA1": "DvH7vztzAqYOu/WfXosUUfXlYfg=",
 			"path": "github.com/wirekit/llio",
 			"revision": "77346282e694e919717c1eb031c7dd4352b55555",
 			"revisionTime": "2018-03-04T19:02:03Z"
 		},
 		{
-			"checksumSHA1": "eBADGw/n7E2put4cOe6v8AVKmns=",
+			"checksumSHA1": "EZh/jiGc5b13npZouU0IjAbwvEY=",
 			"path": "github.com/wirekit/wire",
-			"revision": "76aeaf64affff10de47c02eac23e0c3c4a93400a",
-			"revisionTime": "2018-03-04T19:07:59Z"
+			"revision": "118b6285a9c9fba0c2f843034b03c3fe181088e8",
+			"revisionTime": "2018-03-05T13:58:01Z"
 		},
 		{
-			"checksumSHA1": "kOK8OwdVW1Nf2cJRZVl25Saew3o=",
+			"checksumSHA1": "Nu89L+z/mcdBWnHHD7P9Ok0ghFM=",
 			"path": "github.com/wirekit/wire/internal",
-			"revision": "76aeaf64affff10de47c02eac23e0c3c4a93400a",
-			"revisionTime": "2018-03-04T19:07:59Z"
+			"revision": "118b6285a9c9fba0c2f843034b03c3fe181088e8",
+			"revisionTime": "2018-03-05T13:58:01Z"
+		},
+		{
+			"checksumSHA1": "+C6ri1bjdCoizDe693WGf+/mW60=",
+			"path": "github.com/xenolf/lego/acme",
+			"revision": "b929aa5aab5ad2e197bb3d74ef99fac61bfa47bc",
+			"revisionTime": "2017-11-15T10:03:00Z"
+		},
+		{
+			"checksumSHA1": "1hwn8cgg4EVXhCpJIqmMbzqnUo0=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/crypto/ed25519",
+			"path": "golang.org/x/crypto/ed25519",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "LXFcVx8I587SnWmKycSDEq9yvK8=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/crypto/ed25519/internal/edwards25519",
+			"path": "golang.org/x/crypto/ed25519/internal/edwards25519",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "oCfh/l3RnxEBL1Sa98CMyWu4FF0=",
+			"path": "golang.org/x/crypto/ocsp",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
+			"checksumSHA1": "uX2McdP4VcQ6zkAF0Q4oyd0rFtU=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/bpf",
+			"path": "golang.org/x/net/bpf",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "5JWn/wMC+EWNDKI/AYE4JifQF54=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/internal/iana",
+			"path": "golang.org/x/net/internal/iana",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "8vmmNy/fw4JJ8OjkC4wvzCrtjOk=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/internal/socket",
+			"path": "golang.org/x/net/internal/socket",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "zPTKyZ1C55w1fk1W+/qGE15jaek=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/ipv4",
+			"path": "golang.org/x/net/ipv4",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "3L3n7qKMO9X8E1ibA5mExKvwbmI=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/ipv6",
+			"path": "golang.org/x/net/ipv6",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "4FonadPMjBW33hDoyy+ZtBmU/bc=",
+			"path": "gopkg.in/square/go-jose.v1",
+			"revision": "aa2e30fdd1fe9dd3394119af66451ae790d50e0d",
+			"revisionTime": "2016-09-23T00:08:11Z"
+		},
+		{
+			"checksumSHA1": "vSlztt3rfYwwDDKEiqUDWXl2LGw=",
+			"path": "gopkg.in/square/go-jose.v1/cipher",
+			"revision": "aa2e30fdd1fe9dd3394119af66451ae790d50e0d",
+			"revisionTime": "2016-09-23T00:08:11Z"
+		},
+		{
+			"checksumSHA1": "UYvcpB3og7YJHbRu4feZFxXAU/A=",
+			"path": "gopkg.in/square/go-jose.v1/json",
+			"revision": "aa2e30fdd1fe9dd3394119af66451ae790d50e0d",
+			"revisionTime": "2016-09-23T00:08:11Z"
 		}
 	],
 	"rootPath": "github.com/wirekit/tlsfs"
