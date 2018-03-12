@@ -1,0 +1,1014 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "4QnLdmB1kG3N+KlDd1N+G9TWAGQ=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/beorn7/perks/quantile",
+			"path": "github.com/beorn7/perks/quantile",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "QKZ/nCfJbW5WXdXoaIRTiubeq60=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/auth",
+			"path": "github.com/cloudflare/cfssl/auth",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "duxfb/cka4fBVgW0wSchulpGVcE=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/certdb",
+			"path": "github.com/cloudflare/cfssl/certdb",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "QjOvP4bAJHcs7ZP5ZfrV5IUmHLk=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/certdb/dbconf",
+			"path": "github.com/cloudflare/cfssl/certdb/dbconf",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "qc8uHUVmZJagqJKXztkc2qHxUKM=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/certdb/sql",
+			"path": "github.com/cloudflare/cfssl/certdb/sql",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "GYc6f1LH3fYXlYx/uTM1R4OynBQ=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/config",
+			"path": "github.com/cloudflare/cfssl/config",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "mdeqE00nlroD2prYypxQEc8NcCk=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/crypto/pkcs7",
+			"path": "github.com/cloudflare/cfssl/crypto/pkcs7",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "45zFFieN4o1vZZYSXuZd4XjChSQ=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/csr",
+			"path": "github.com/cloudflare/cfssl/csr",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "rNQVCjX9YI6dUuna+fJBOBcRVJs=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/errors",
+			"path": "github.com/cloudflare/cfssl/errors",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "ItkmlVfOASFWRDm9iGacP+bRjG4=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/helpers",
+			"path": "github.com/cloudflare/cfssl/helpers",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "hrI9ZAcwbjQ0FVHrpkxIKk4PdfQ=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/helpers/derhelpers",
+			"path": "github.com/cloudflare/cfssl/helpers/derhelpers",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "nbzsp45GyLeosQUqpNT9fWc1q9U=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/info",
+			"path": "github.com/cloudflare/cfssl/info",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "BMy7zAiSQTYYWn1ZzxeEC75pd2g=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/log",
+			"path": "github.com/cloudflare/cfssl/log",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "PZKKsPfrWTNYmlJYPwVBuHlfKoQ=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/ocsp",
+			"path": "github.com/cloudflare/cfssl/ocsp",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "OKh9Jo5QeZhPOWkoseDc0J8U1LM=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/ocsp/config",
+			"path": "github.com/cloudflare/cfssl/ocsp/config",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "oo6gNj7aqtOcQlXUruouFOz15L0=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/signer",
+			"path": "github.com/cloudflare/cfssl/signer",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "hKBy1C+fe6r+n3uWmiY8xon3EvM=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/cloudflare/cfssl/signer/local",
+			"path": "github.com/cloudflare/cfssl/signer/local",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "dvabztWVQX8f6oMLRyv4dLH+TGY=",
+			"origin": "github.com/stretchr/testify/vendor/github.com/davecgh/go-spew/spew",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "b89eecf5ca5db6d3ba60b237ffe3df7bafb7662f",
+			"revisionTime": "2018-03-03T13:51:14Z"
+		},
+		{
+			"checksumSHA1": "i3UtE7/Cn57eX1hO5Z0CqY/Eeb4=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/go-sql-driver/mysql",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "6ZxSmrIx3Jd15aou16oG0HPylP4=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/gogo/protobuf/proto",
+			"path": "github.com/gogo/protobuf/proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "/5JpULDw51Em+1+OJHcfDkbw/e0=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/golang/mock/gomock",
+			"path": "github.com/golang/mock/gomock",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "YP8qvDsT4BxOT2FHYEaRhRxlSpU=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/golang/mock/mockgen/model",
+			"path": "github.com/golang/mock/mockgen/model",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "WX1+2gktHcBmE9MGwFSGs7oqexU=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/golang/protobuf/proto",
+			"path": "github.com/golang/protobuf/proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "VfkiItDBFFkZluaAMAzJipDXNBY=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/golang/protobuf/ptypes",
+			"path": "github.com/golang/protobuf/ptypes",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "UB9scpDxeFjQe5tEthuR4zCLRu4=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/golang/protobuf/ptypes/any",
+			"path": "github.com/golang/protobuf/ptypes/any",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "hUjAj0dheFVDl84BAnSWj9qy2iY=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/golang/protobuf/ptypes/duration",
+			"path": "github.com/golang/protobuf/ptypes/duration",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "O2ItP5rmfrgxPufhjJXbFlXuyL8=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/golang/protobuf/ptypes/timestamp",
+			"path": "github.com/golang/protobuf/ptypes/timestamp",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "sxqAV/AZKJGGD1eKEMTVMfOUwBY=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/certificate-transparency-go",
+			"path": "github.com/google/certificate-transparency-go",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "koSyHgoF+vFkyxGx9ALihCf8Ac0=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/certificate-transparency-go/asn1",
+			"path": "github.com/google/certificate-transparency-go/asn1",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "tnLKVE9X/UDEUu2qSsFzlsUMNEw=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/certificate-transparency-go/client",
+			"path": "github.com/google/certificate-transparency-go/client",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "sb1mCLUWEdBksGx4s2k0SEbwanw=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/certificate-transparency-go/client/configpb",
+			"path": "github.com/google/certificate-transparency-go/client/configpb",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "CEasVUAg0VTSsgTOV10zeKiY9Q0=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/certificate-transparency-go/jsonclient",
+			"path": "github.com/google/certificate-transparency-go/jsonclient",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "SUak+d7KcqQce3QIwaAsEprMxQc=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/certificate-transparency-go/tls",
+			"path": "github.com/google/certificate-transparency-go/tls",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "YrKODccowWhBGWWLQ1++MewN7Ag=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/certificate-transparency-go/x509",
+			"path": "github.com/google/certificate-transparency-go/x509",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "MY2Wckh2xLLhwP+BX4iqHJMStK0=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/certificate-transparency-go/x509/pkix",
+			"path": "github.com/google/certificate-transparency-go/x509/pkix",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "fxMgREcL3WJu5jCJTsW52WdMIRE=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/safebrowsing",
+			"path": "github.com/google/safebrowsing",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "a0OE9Y3GYbHg94e85snjaYItmpI=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/google/safebrowsing/internal/safebrowsing_proto",
+			"path": "github.com/google/safebrowsing/internal/safebrowsing_proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "s7J8PdKJFnoBFg6MowXLTvix7ug=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/grpc-ecosystem/go-grpc-prometheus",
+			"path": "github.com/grpc-ecosystem/go-grpc-prometheus",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "1HUry0EiJTnSykWVkWw7ekJ9Zvk=",
+			"path": "github.com/influx6/faux/pools/pbytes",
+			"revision": "79fa50eff2f549ebbbf268c48942c86a1605d931",
+			"revisionTime": "2018-03-03T19:20:10Z"
+		},
+		{
+			"checksumSHA1": "/PE0RGwoNeVkhlVKWxnIt0TgAA4=",
+			"path": "github.com/influx6/faux/tests",
+			"revision": "79fa50eff2f549ebbbf268c48942c86a1605d931",
+			"revisionTime": "2018-03-03T19:20:10Z"
+		},
+		{
+			"checksumSHA1": "e31lcI8tZLaulsX4PZCFBAyC920=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/jmhodges/clock",
+			"path": "github.com/jmhodges/clock",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "bSPFiixQ6lS6IhdYXLrO6sYR5TA=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/jmoiron/sqlx",
+			"path": "github.com/jmoiron/sqlx",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "bXFrevmVL5Q2EwYlRHlPihxvAJA=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/jmoiron/sqlx/reflectx",
+			"path": "github.com/jmoiron/sqlx/reflectx",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "ss+6kcmkUGRUhwrx3RmE+C6rBhY=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/kisielk/sqlstruct",
+			"path": "github.com/kisielk/sqlstruct",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "4ud4fcjrQFG4xoYp86+UJXUy+js=",
+			"path": "github.com/letsencrypt/boulder/akamai",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "5Zj8FvE8ckqycr51wqf4iVeT8WA=",
+			"path": "github.com/letsencrypt/boulder/bdns",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "AHLprdInUJAjEwZMhSywzsyYwQo=",
+			"path": "github.com/letsencrypt/boulder/ca",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "NLmy0PsH6oITMCDRjCKGLviNUCs=",
+			"path": "github.com/letsencrypt/boulder/ca/config",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "lx8lh6UikZq6k0S3ONgY1XXapG0=",
+			"path": "github.com/letsencrypt/boulder/ca/proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "I7UBbO942h0Goa1jZ0w0AlFbI9c=",
+			"path": "github.com/letsencrypt/boulder/canceled",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "4YMN0e6dEonU4fUnWNxbxDxSVT8=",
+			"path": "github.com/letsencrypt/boulder/cmd",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "ngEtwjnDBf8zqKaTG8MIUFGEcfY=",
+			"path": "github.com/letsencrypt/boulder/cmd/boulder-va/mock_gsb",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "eSeN6Pzc1H6DanzBFwm61/f/ZZ8=",
+			"path": "github.com/letsencrypt/boulder/core",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "71HHiadAu9EhgLsu+hPKIPKH4V4=",
+			"path": "github.com/letsencrypt/boulder/core/proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "LUK38pBucXwD3OCYKWu88brR0yA=",
+			"path": "github.com/letsencrypt/boulder/csr",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "0gMv+/tzl6roH4NAqCIk4Uf3w/E=",
+			"path": "github.com/letsencrypt/boulder/ctpolicy",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "ecRaxEmxaBMS8SR95t04PFLfap8=",
+			"path": "github.com/letsencrypt/boulder/errors",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "CfJ0uKxij/xBVm/TFTlwcyhH7AI=",
+			"path": "github.com/letsencrypt/boulder/features",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "UFaX3TSE+LdWAG+Qo9tp2zt6png=",
+			"path": "github.com/letsencrypt/boulder/goodkey",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "9mAKRgB1MZ9onqAWe13g+bgfr7Q=",
+			"path": "github.com/letsencrypt/boulder/grpc",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "VfU1I9QwuonFC5FC7n0H8D31SLk=",
+			"path": "github.com/letsencrypt/boulder/grpc/creds",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "uyGC9i7AE62Mr1aHIewrLyfcA1g=",
+			"path": "github.com/letsencrypt/boulder/grpc/test_proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "XDl0RXgb4GxNYoDJJbWLZian8JE=",
+			"path": "github.com/letsencrypt/boulder/log",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "VePAHXtvS6vpdlQooOqk8++fuwc=",
+			"path": "github.com/letsencrypt/boulder/mail",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "IeFdl20Tn3tOSeyb+55YfYIU7zA=",
+			"path": "github.com/letsencrypt/boulder/metrics",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "tpfCb9Mi6HBqJxuwzSjLEPB+PBg=",
+			"path": "github.com/letsencrypt/boulder/metrics/measured_http",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "r6v+m/8LHz4oGAFGmUaMrkxIfMM=",
+			"path": "github.com/letsencrypt/boulder/metrics/mock_metrics",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "9fK7zhspWsvGExATzkfV2T40nJo=",
+			"path": "github.com/letsencrypt/boulder/mocks",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "GTtwMs/gv7rTZUX7eNs0aXykaq8=",
+			"path": "github.com/letsencrypt/boulder/nonce",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "iLFRTyjhfJeHDpPV3hkztdrQeGk=",
+			"path": "github.com/letsencrypt/boulder/policy",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "RNGKe2Wm7fnkm5pWAacCztxmYhU=",
+			"path": "github.com/letsencrypt/boulder/probs",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "oCsnJIQpA308jvS8Np+Tx5o4yUk=",
+			"path": "github.com/letsencrypt/boulder/publisher",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "1CdKEqU5jgQA2WCo+WzuW/D76+w=",
+			"path": "github.com/letsencrypt/boulder/publisher/mock_publisher",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "4lWWaw/pAp4DmOqGXAkvnhvHUTI=",
+			"path": "github.com/letsencrypt/boulder/publisher/proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "ChVTd5oyuRF/rul6lYjrI8UtkO8=",
+			"path": "github.com/letsencrypt/boulder/ra",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "H8Scb6Xa896i22hCqvJtghHct/E=",
+			"path": "github.com/letsencrypt/boulder/ra/proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "3qGU8GtYkXHAdqyguZ/fjR25cyg=",
+			"path": "github.com/letsencrypt/boulder/ratelimit",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "LPc5xqS3MX8KepwMhClSZckSiEI=",
+			"path": "github.com/letsencrypt/boulder/reloader",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "Wa0KFnry6d6Ep2R3EaoQn8eryFI=",
+			"path": "github.com/letsencrypt/boulder/revocation",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "GsIwIHbvcdxMfCceMSoeMFMLVXY=",
+			"path": "github.com/letsencrypt/boulder/sa",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "4bPO8KEHst+P7FKFNPtuNS4ijhU=",
+			"path": "github.com/letsencrypt/boulder/sa/proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "hFWggtU6DpVeRIX4dmWCPHpLzjY=",
+			"path": "github.com/letsencrypt/boulder/sa/satest",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "XXbHPWYnyCEeNhmRYGtdYpoUIpU=",
+			"path": "github.com/letsencrypt/boulder/test",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "PpvYKaLCZ2AO4DazAin6tt3eSo4=",
+			"path": "github.com/letsencrypt/boulder/test/gsb-test-srv/proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "41Tz4myM5ncAofoDI/3oI5X8ERo=",
+			"path": "github.com/letsencrypt/boulder/test/ocsp/helper",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "r/J/YIKdee17yRcaCy4OM4hofzY=",
+			"path": "github.com/letsencrypt/boulder/test/vars",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "IwaEFIcQvs1rV+3CXmALUUTDUC0=",
+			"path": "github.com/letsencrypt/boulder/va",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "xoI4Hh38BFxOryo8U0r1GVmNioo=",
+			"path": "github.com/letsencrypt/boulder/va/proto",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "In8I7G5w6hz5XxI9c32YGJGjJKA=",
+			"path": "github.com/letsencrypt/boulder/web",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "qqE+YamUgKkBHxYcUg+GNq9dGQM=",
+			"path": "github.com/letsencrypt/boulder/wfe",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "XGTYCFQA+kBv2sC4fFMfQWxPJCY=",
+			"path": "github.com/letsencrypt/boulder/wfe2",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "zs6CUQADzHsogQU7G5wn5JimIRE=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/letsencrypt/pkcs11key",
+			"path": "github.com/letsencrypt/pkcs11key",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "bKMZjd2wPw13VwoE7mBeSv5djFA=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/matttproud/golang_protobuf_extensions/pbutil",
+			"path": "github.com/matttproud/golang_protobuf_extensions/pbutil",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "c8Hh4p3yG22nKc8L6dBzto0bvFc=",
+			"path": "github.com/miekg/dns",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "kfyF+aIibLC33Qn2xeuNuiJ+waU=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/miekg/pkcs11",
+			"path": "github.com/miekg/pkcs11",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
+			"origin": "github.com/stretchr/testify/vendor/github.com/pmezard/go-difflib/difflib",
+			"path": "github.com/pmezard/go-difflib/difflib",
+			"revision": "b89eecf5ca5db6d3ba60b237ffe3df7bafb7662f",
+			"revisionTime": "2018-03-03T13:51:14Z"
+		},
+		{
+			"checksumSHA1": "KkB+77Ziom7N6RzSbyUwYGrmDeU=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/prometheus/client_golang/prometheus",
+			"path": "github.com/prometheus/client_golang/prometheus",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "lG3//eDlwqA4IOuAPrNtLh9G0TA=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/prometheus/client_golang/prometheus/promhttp",
+			"path": "github.com/prometheus/client_golang/prometheus/promhttp",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "DvwvOlPNAgRntBzt3b3OSRMS2N4=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/prometheus/client_model/go",
+			"path": "github.com/prometheus/client_model/go",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "mHyjbJ3BWOfUV6q9f5PBt0gaY1k=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/prometheus/common/expfmt",
+			"path": "github.com/prometheus/common/expfmt",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "GWlM3d2vPYyNATtTFgftS10/A9w=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg",
+			"path": "github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "nFie+rxcX5WdIv1diZ+fu3aj6lE=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/prometheus/common/model",
+			"path": "github.com/prometheus/common/model",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "W218eJZPXJG783fUr/z6IaAZyes=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/prometheus/procfs",
+			"path": "github.com/prometheus/procfs",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "5QKvAdxb0E47Nzn7iI25AfgAvOI=",
+			"path": "github.com/stretchr/testify/assert",
+			"revision": "b89eecf5ca5db6d3ba60b237ffe3df7bafb7662f",
+			"revisionTime": "2018-03-03T13:51:14Z"
+		},
+		{
+			"checksumSHA1": "QeCCGNcnuk0aUvAHyp+s1C7joXg=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/titanous/rocacheck",
+			"path": "github.com/titanous/rocacheck",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "e4nSP477wmvIhOt1r+pAIpE7NUA=",
+			"origin": "github.com/letsencrypt/boulder/vendor/github.com/weppos/publicsuffix-go/publicsuffix",
+			"path": "github.com/weppos/publicsuffix-go/publicsuffix",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "DvH7vztzAqYOu/WfXosUUfXlYfg=",
+			"path": "github.com/wirekit/llio",
+			"revision": "77346282e694e919717c1eb031c7dd4352b55555",
+			"revisionTime": "2018-03-04T19:02:03Z"
+		},
+		{
+			"checksumSHA1": "H87ekuVIxVbJYFHzIgo+nFrfwgg=",
+			"path": "github.com/xenolf/lego/acme",
+			"revision": "b929aa5aab5ad2e197bb3d74ef99fac61bfa47bc",
+			"revisionTime": "2017-11-15T10:03:00Z"
+		},
+		{
+			"checksumSHA1": "ObZJm0OcjRnLRGqjeyMPh9INsmQ=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/crypto/cryptobyte",
+			"path": "golang.org/x/crypto/cryptobyte",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "aQddibNAeR+eiLtT1makyttzie4=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/crypto/cryptobyte/asn1",
+			"path": "golang.org/x/crypto/cryptobyte/asn1",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "1hwn8cgg4EVXhCpJIqmMbzqnUo0=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/crypto/ed25519",
+			"path": "golang.org/x/crypto/ed25519",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "LXFcVx8I587SnWmKycSDEq9yvK8=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/crypto/ed25519/internal/edwards25519",
+			"path": "golang.org/x/crypto/ed25519/internal/edwards25519",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "oCfh/l3RnxEBL1Sa98CMyWu4FF0=",
+			"path": "golang.org/x/crypto/ocsp",
+			"revision": "81e90905daefcd6fd217b62423c0908922eadb30",
+			"revisionTime": "2017-08-25T20:24:07Z"
+		},
+		{
+			"checksumSHA1": "PJY7uCr3UnX4/Mf/RoWnbieSZ8o=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/crypto/pkcs12",
+			"path": "golang.org/x/crypto/pkcs12",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "p0GC51McIdA7JygoP223twJ1s0E=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/crypto/pkcs12/internal/rc2",
+			"path": "golang.org/x/crypto/pkcs12/internal/rc2",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "uX2McdP4VcQ6zkAF0Q4oyd0rFtU=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/bpf",
+			"path": "golang.org/x/net/bpf",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "2nv6VV1DEv3PeH+toJVSHd3OxGE=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/net/context",
+			"path": "golang.org/x/net/context",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "3E7SiqZU7Bj+zFvMH0/HElieh1k=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/net/context/ctxhttp",
+			"path": "golang.org/x/net/context/ctxhttp",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "kyg0RtP8/9yWNDqf+hDaedKzf18=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/net/http2",
+			"path": "golang.org/x/net/http2",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "ezWhc7n/FtqkLDQKeU2JbW+80tE=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/net/http2/hpack",
+			"path": "golang.org/x/net/http2/hpack",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "UqZ/NARR2Jjszi3YfehGlcQ68dY=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/net/idna",
+			"path": "golang.org/x/net/idna",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "5JWn/wMC+EWNDKI/AYE4JifQF54=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/internal/iana",
+			"path": "golang.org/x/net/internal/iana",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "8vmmNy/fw4JJ8OjkC4wvzCrtjOk=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/internal/socket",
+			"path": "golang.org/x/net/internal/socket",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "Llk2EwFadPRImSOQuUvXc5L8VsA=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/net/internal/timeseries",
+			"path": "golang.org/x/net/internal/timeseries",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "zPTKyZ1C55w1fk1W+/qGE15jaek=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/ipv4",
+			"path": "golang.org/x/net/ipv4",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "3L3n7qKMO9X8E1ibA5mExKvwbmI=",
+			"origin": "github.com/miekg/dns/vendor/golang.org/x/net/ipv6",
+			"path": "golang.org/x/net/ipv6",
+			"revision": "906238edc6eb0ddface4a1923f6d41ef2a5ca59b",
+			"revisionTime": "2018-03-01T14:22:09Z"
+		},
+		{
+			"checksumSHA1": "3xyuaSNmClqG4YWC7g0isQIbUTc=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/net/lex/httplex",
+			"path": "golang.org/x/net/lex/httplex",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "6eA9a8L7L9+RgPWF7oSN64dKIOA=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/net/trace",
+			"path": "golang.org/x/net/trace",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "faFDXp++cLjLBlvsr+izZ+go1WU=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/text/secure/bidirule",
+			"path": "golang.org/x/text/secure/bidirule",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "pNIrjL0NmGfofdQhLJ1V1OaMyeY=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/text/transform",
+			"path": "golang.org/x/text/transform",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "DgdG/s+OwD97w4oDlJD7hutFtJA=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/text/unicode/bidi",
+			"path": "golang.org/x/text/unicode/bidi",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "J0CU0pconUgeeVe8cRXFdVrah/g=",
+			"origin": "github.com/letsencrypt/boulder/vendor/golang.org/x/text/unicode/norm",
+			"path": "golang.org/x/text/unicode/norm",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "D6iSbdS4Yq4zVAjbLgUNfGExVLI=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc",
+			"path": "google.golang.org/grpc",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "0XQmTkRqSo/CN8WhuwbKo/PLQKI=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/codes",
+			"path": "google.golang.org/grpc/codes",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "AalflAMEqRtXhuPVAWwXG8HukM8=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/credentials",
+			"path": "google.golang.org/grpc/credentials",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "pGs9ZeNwE/zzIa8tZEmCgbLAZZ4=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/grpclog",
+			"path": "google.golang.org/grpc/grpclog",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "T3Q0p8kzvXFnRkMaK/G8mCv6mc0=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/internal",
+			"path": "google.golang.org/grpc/internal",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "NnarQ6O9NqkBg2g6jc1PkciTpnY=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/keepalive",
+			"path": "google.golang.org/grpc/keepalive",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "ty0Wdqnok7V2gBoU+EQp/wtD60o=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/metadata",
+			"path": "google.golang.org/grpc/metadata",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "4GSUFhOQ0kdFlBH4D5OTeKy78z0=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/naming",
+			"path": "google.golang.org/grpc/naming",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "3RRoLeH6X2//7tVClOVzxW2bY+E=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/peer",
+			"path": "google.golang.org/grpc/peer",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "IX/cYMZ/gf2nwKI0zF8eoThjCUQ=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/stats",
+			"path": "google.golang.org/grpc/stats",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "N0TftT6/CyWqp6VRi2DqDx60+Fo=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/tap",
+			"path": "google.golang.org/grpc/tap",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "Sa70wCDky1O29P8Y2+kGH2DhuT0=",
+			"origin": "github.com/letsencrypt/boulder/vendor/google.golang.org/grpc/transport",
+			"path": "google.golang.org/grpc/transport",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "VQfW9O+alYLNTA5p8SOeUPQPaCs=",
+			"origin": "github.com/letsencrypt/boulder/vendor/gopkg.in/go-gorp/gorp.v2",
+			"path": "gopkg.in/go-gorp/gorp.v2",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "4FonadPMjBW33hDoyy+ZtBmU/bc=",
+			"path": "gopkg.in/square/go-jose.v1",
+			"revision": "aa2e30fdd1fe9dd3394119af66451ae790d50e0d",
+			"revisionTime": "2016-09-23T00:08:11Z"
+		},
+		{
+			"checksumSHA1": "vSlztt3rfYwwDDKEiqUDWXl2LGw=",
+			"path": "gopkg.in/square/go-jose.v1/cipher",
+			"revision": "aa2e30fdd1fe9dd3394119af66451ae790d50e0d",
+			"revisionTime": "2016-09-23T00:08:11Z"
+		},
+		{
+			"checksumSHA1": "UYvcpB3og7YJHbRu4feZFxXAU/A=",
+			"path": "gopkg.in/square/go-jose.v1/json",
+			"revision": "aa2e30fdd1fe9dd3394119af66451ae790d50e0d",
+			"revisionTime": "2016-09-23T00:08:11Z"
+		},
+		{
+			"checksumSHA1": "kjuiN4OD/B5oVRwSgZ1c+eNjePQ=",
+			"origin": "github.com/letsencrypt/boulder/vendor/gopkg.in/square/go-jose.v2",
+			"path": "gopkg.in/square/go-jose.v2",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "Ho5sr2GbiR8S35IRni7vC54d5Js=",
+			"origin": "github.com/letsencrypt/boulder/vendor/gopkg.in/square/go-jose.v2/cipher",
+			"path": "gopkg.in/square/go-jose.v2/cipher",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "JFun0lWY9eqd80Js2iWsehu1gc4=",
+			"origin": "github.com/letsencrypt/boulder/vendor/gopkg.in/square/go-jose.v2/json",
+			"path": "gopkg.in/square/go-jose.v2/json",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		},
+		{
+			"checksumSHA1": "KgT+peLCcuh0/m2mpoOZXuxXmwc=",
+			"origin": "github.com/letsencrypt/boulder/vendor/gopkg.in/yaml.v2",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "6ad718a42e4baf590edb09dd3b8d75e193f52029",
+			"revisionTime": "2018-03-10T21:05:52Z"
+		}
+	],
+	"rootPath": "github.com/wirekit/tlsfs"
+}
