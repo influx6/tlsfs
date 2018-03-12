@@ -1,5 +1,7 @@
 .PHONY : clean
 
+netip = $(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')
+
 travis-ci: boulder ci clean
 
 travis-tests: boulder tests clean
