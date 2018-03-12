@@ -523,7 +523,7 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 	var bundled acme.CertificateResource
 
 	// Attempt 5 times to get certificate bundle response.
-	for attempts := 5; attempts > 0; attempts-- {
+	for attempts := 3; attempts > 0; attempts-- {
 		bundle, failures := domainClient.ObtainCertificate(
 			[]string{acct.Domain},
 			true,
@@ -665,7 +665,7 @@ func (acm *AcmeFS) Renew(email string, domain string) (tlsfs.TLSDomainCertificat
 	var bundled acme.CertificateResource
 
 	// Attempt 5 times to renew domain certificate.
-	for attempts := 5; attempts > 0; attempts-- {
+	for attempts := 3; attempts > 0; attempts-- {
 		bundled, err = client.RenewCertificate(certbundle, true, acm.config.MustStaple)
 		if err != nil {
 			tErrs = append(tErrs, err)

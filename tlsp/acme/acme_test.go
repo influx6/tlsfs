@@ -27,7 +27,7 @@ func TestAcmeFSWithMemFS(t *testing.T) {
 	config.HTTPChallengePort = 5002
 	config.TLSSNIChallengePort = 5001
 	config.EnableHTTP01Challenge = true
-	config.EnableTLSSNI01Challenge = true
+	config.ListenerAddr = "127.0.0.1"
 	config.UsersFileSystem = memfs.NewMemFS()
 	config.CertificatesFileSystem = memfs.NewMemFS()
 
@@ -47,7 +47,7 @@ func TestAcmeFSWithSysFS(t *testing.T) {
 	config.HTTPChallengePort = 5002
 	config.TLSSNIChallengePort = 5001
 	config.EnableHTTP01Challenge = true
-	config.EnableTLSSNI01Challenge = true
+	config.ListenerAddr = "127.0.0.1"
 	config.UsersFileSystem = sysfs.NewSystemZapFS("temp/acme/users")
 	config.CertificatesFileSystem = sysfs.NewSystemZapFS("temp/acme/certs")
 	tharness.RunTLSFSTestHarness(t, acme.NewAcmeFS(config), domain, email)
