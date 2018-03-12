@@ -4,17 +4,11 @@ services:
   - docker
 
 go:
+  - 1.8
   - 1.9
 
 before_script:
 after_script:
 script:
+    - make travis-ci
 
-jobs:
- include:
-  - stage: coverage
-    script: make coverage
-  - stage: benchmarks
-    script: make benchmarks
-  - stage: test
-    script: make tests-travis
