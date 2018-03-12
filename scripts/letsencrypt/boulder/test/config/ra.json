@@ -1,0 +1,68 @@
+{
+  "ra": {
+    "rateLimitPoliciesFilename": "test/rate-limit-policies.yml",
+    "maxConcurrentRPCServerRequests": 100000,
+    "maxContactsPerRegistration": 100,
+    "dnsTries": 3,
+    "debugAddr": ":8002",
+    "hostnamePolicyFile": "test/hostname-policy.json",
+    "maxNames": 100,
+    "doNotForceCN": true,
+    "reuseValidAuthz": true,
+    "authorizationLifetimeDays": 30,
+    "pendingAuthorizationLifetimeDays": 7,
+    "weakKeyDirectory": "test/example-weak-keys.json",
+    "tls": {
+      "caCertFile": "test/grpc-creds/minica.pem",
+      "certFile": "test/grpc-creds/ra.boulder/cert.pem",
+      "keyFile": "test/grpc-creds/ra.boulder/key.pem"
+    },
+    "vaService": {
+      "serverAddresses": ["va.boulder:9092"],
+      "timeout": "20s"
+    },
+    "caService": {
+      "serverAddresses": ["ca.boulder:9093"],
+      "timeout": "15s"
+    },
+    "publisherService": {
+      "serverAddresses": ["publisher.boulder:9091"],
+      "timeout": "15s"
+    },
+    "saService": {
+      "serverAddresses": ["sa.boulder:9095"],
+      "timeout": "15s"
+    },
+    "grpc": {
+      "address": ":9094",
+      "clientNames": [
+        "wfe.boulder",
+        "admin-revoker.boulder"
+      ]
+    },
+    "features": {
+      "CountCertificatesExact": true,
+      "ReusePendingAuthz": false
+    }
+  },
+
+  "pa": {
+    "challenges": {
+      "http-01": true,
+      "tls-sni-01": true,
+      "dns-01": true
+    },
+    "challengesWhitelistFile": "test/challenges-whitelist.json"
+  },
+
+  "syslog": {
+    "stdoutlevel": 6,
+    "sysloglevel": 4
+  },
+
+  "common": {
+    "dnsResolver": "127.0.0.1:8053",
+    "dnsTimeout": "1s",
+    "dnsAllowLoopbackAddresses": true
+  }
+}

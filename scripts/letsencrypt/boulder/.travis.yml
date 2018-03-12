@@ -1,0 +1,52 @@
+language: go
+
+go:
+  - "1.10"
+
+go_import_path: github.com/letsencrypt/boulder
+
+addons:
+  hosts:
+    - le.wtf
+    - boulder
+    - boulder-mysql
+    - boulder-rabbitmq
+
+sudo: required
+
+services:
+  - docker
+
+# Only build pushes to the master branch, PRs, and branches beginning with
+# `test-`. You should not push branches beginning with `test-` to the
+# letsencrypt repository, but this is a convenient way to push branches to your
+# own fork of the repostiroy to ensure Travis passes before submitting a PR.
+# For instance, you might run:
+# git push myremote branchname:test-branchname
+branches:
+  only:
+    - master
+    - staging
+    - release
+    - /^test-.*$/
+
+matrix:
+  include:
+    - env: RUN="vet fmt migrations integration godep-restore errcheck generate dashlint rpm"
+    # Config changes that have landed in master but not yet been applied to
+    # production can be made in boulder-config-next.json.
+    - env: RUN="integration" BOULDER_CONFIG_DIR="test/config-next"
+    - env: RUN="unit"
+    - env: RUN="unit-next" BOULDER_CONFIG_DIR="test/config-next"
+    - env: RUN="coverage"
+    - env: RUN="acme-v2" BOULDER_CONFIG_DIR="test/config-next"
+  fast_finish: true
+  allow_failures:
+    - env: RUN="coverage"
+
+install:
+  - ./test/travis-before-install.sh
+  - docker-compose pull
+
+script:
+  - docker-compose run -e BOULDER_CONFIG_DIR="${BOULDER_CONFIG_DIR}" -e RUN="${RUN}" -e TRAVIS="${TRAVIS}" -e TRAVIS_COMMIT="${TRAVIS_COMMIT}" -e TRAVIS_PULL_REQUEST="${TRAVIS_PULL_REQUEST}" -e TRAVIS_PULL_REQUEST="${TRAVIS_PULL_REQUEST}" -e TRAVIS_JOB_ID="${TRAVIS_JOB_ID}" -e COVERALLS_TOKEN="${COVERALLS_TOKEN}" boulder  ./test.sh
