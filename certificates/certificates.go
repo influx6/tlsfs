@@ -971,6 +971,10 @@ func EncodePrivateKey(privateKey crypto.PrivateKey) ([]byte, error) {
 // certificate block.
 func DecodeCertificate(data []byte) (*x509.Certificate, error) {
 	certBlock, _ := pem.Decode(data)
+	if certBlock == nil {
+		return nil, errors.New("failed to decode pem block")
+	}
+
 	if certBlock.Type != certTypeName {
 		return nil, ErrNoCertificate
 	}
@@ -984,6 +988,10 @@ func DecodeCertificate(data []byte) (*x509.Certificate, error) {
 // certificate request block.
 func DecodeCertificateRequest(d []byte) (*x509.CertificateRequest, error) {
 	certBlock, _ := pem.Decode(d)
+	if certBlock == nil {
+		return nil, errors.New("failed to decode pem block")
+	}
+
 	if certBlock.Type != certReqTypeName {
 		return nil, ErrNoCertificateRequest
 	}
@@ -997,6 +1005,10 @@ func DecodeCertificateRequest(d []byte) (*x509.CertificateRequest, error) {
 // certificate request block.
 func DecodePrivateKey(d []byte) (PrivateKeyType, crypto.PrivateKey, error) {
 	certBlock, _ := pem.Decode(d)
+	if certBlock == nil {
+		return UnknownType, nil, errors.New("failed to decode pem block")
+	}
+
 	pkeyType := ToPrivateKeyType(certBlock.Type)
 
 	switch pkeyType {

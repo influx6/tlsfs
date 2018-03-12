@@ -12,23 +12,23 @@ import (
 // RunTLSFSTestHarness provides a generic test harness that works to
 // test an implementation of the tlsfs.TLSFS interface. It attempts to
 // ensure that all expected behaviour is valid.
-func RunTLSFSTestHarness(t *testing.T, fs tlsfs.TLSFS) {
-	testForDomainCreation(t, fs)
-	testForDomainUserRetrieve(t, fs)
-	testForDomainCertificateRetrieve(t, fs)
-	testForDomainRenewal(t, fs)
-	testForDomainAllCertificatesRetrieval(t, fs)
-	testForDomainRevoke(t, fs)
+func RunTLSFSTestHarness(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
+	testForDomainCreation(t, fs, domain, email)
+	testForDomainUserRetrieve(t, fs, domain, email)
+	testForDomainCertificateRetrieve(t, fs, domain, email)
+	testForDomainRenewal(t, fs, domain, email)
+	testForDomainAllCertificatesRetrieval(t, fs, domain, email)
+	testForDomainRevoke(t, fs, domain, email)
 }
 
-func testForDomainCreation(t *testing.T, fs tlsfs.TLSFS) {
+func testForDomainCreation(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
 	acct := tlsfs.NewDomain{
 		Version:    1,
 		Province:   "LG",
-		CommonName: "westros",
-		Email:      "thunder_cat@gmail.com",
-		Domain:     "thundercat.io",
-		KeyType:    tlsfs.ECKey512,
+		CommonName: "*",
+		Email:      email,
+		Domain:     domain,
+		KeyType:    tlsfs.ECKey384,
 	}
 
 	testimony, status, err := fs.Create(acct, tlsfs.AgreeToTOS)
@@ -54,10 +54,7 @@ func testForDomainCreation(t *testing.T, fs tlsfs.TLSFS) {
 	assert.Equal(t, distance, tlsfs.ThreeMonths)
 }
 
-func testForDomainRenewal(t *testing.T, fs tlsfs.TLSFS) {
-	email := "thunder_cat@gmail.com"
-	domain := "thundercat.io"
-
+func testForDomainRenewal(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
 	renewedTestimony, state, err := fs.Renew(email, domain)
 	if err != nil {
 		tests.FailedWithError(err, "Should have successfully renewed domain certificate")
@@ -81,10 +78,7 @@ func testForDomainRenewal(t *testing.T, fs tlsfs.TLSFS) {
 	assert.Equal(t, distance, tlsfs.ThreeMonths)
 }
 
-func testForDomainRevoke(t *testing.T, fs tlsfs.TLSFS) {
-	email := "thunder_cat@gmail.com"
-	domain := "thundercat.io"
-
+func testForDomainRevoke(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
 	if err := fs.Revoke(email, domain); err != nil {
 		tests.FailedWithError(err, "Should have successfully revoked domain certificate")
 	}
@@ -96,9 +90,7 @@ func testForDomainRevoke(t *testing.T, fs tlsfs.TLSFS) {
 	tests.Passed("Should have failed to retrieve revoked certificate")
 }
 
-func testForDomainUserRetrieve(t *testing.T, fs tlsfs.TLSFS) {
-	email := "thunder_cat@gmail.com"
-
+func testForDomainUserRetrieve(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
 	user, err := fs.GetUser(email)
 	if err != nil {
 		tests.FailedWithError(err, "Should have successfully retrieved user by email")
@@ -110,10 +102,7 @@ func testForDomainUserRetrieve(t *testing.T, fs tlsfs.TLSFS) {
 	assert.Equal(t, user.GetEmail(), email)
 }
 
-func testForDomainCertificateRetrieve(t *testing.T, fs tlsfs.TLSFS) {
-	email := "thunder_cat@gmail.com"
-	domain := "thundercat.io"
-
+func testForDomainCertificateRetrieve(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
 	testimony, _, err := fs.Get(email, domain)
 	if err != nil {
 		tests.FailedWithError(err, "Should have successfully retrieved certificate for domain and email")
@@ -127,7 +116,7 @@ func testForDomainCertificateRetrieve(t *testing.T, fs tlsfs.TLSFS) {
 	assert.Equal(t, testimony.Domain, strings.ToLower(domain))
 }
 
-func testForDomainAllCertificatesRetrieval(t *testing.T, fs tlsfs.TLSFS) {
+func testForDomainAllCertificatesRetrieval(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
 	domains, err := fs.All()
 	if err != nil {
 		tests.FailedWithError(err, "Should have successfully retrieved all certificates")

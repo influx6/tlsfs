@@ -105,6 +105,16 @@ type Config struct {
 	// be disabled.
 	DNSProvider acme.ChallengeProvider
 
+	// HTTPProvider accompanies the EnabledHTTP01Challenge but is optional,
+	// if not set the acme client will use it's default provider else use
+	// this if provided for the http-01 challenge.
+	HTTPProvider acme.ChallengeProvider
+
+	// TLSSNIProvider accompanies the EnabledTLSSNI01Challenge but is optional,
+	// if not set the acme client will use it's default provider else use
+	// this if provided for the tls-sni-01 challenge.
+	TLSSNIProvider acme.ChallengeProvider
+
 	// excludedChallenges is an internal set used to initialize the given
 	// challenges to be excluded if not enabled. We require that atleast one
 	// challenge must be enabled, else HTTP-01 challenge is set enabled by
@@ -138,7 +148,7 @@ func (c *Config) init() {
 			c.excludedChallenges = []acme.Challenge{acme.DNS01}
 		}
 	} else {
-		c.excludedChallenges = []acme.Challenge{acme.DNS01}
+		c.excludedChallenges = append(c.excludedChallenges, acme.DNS01)
 	}
 
 	// if tls-sni-01 challenge is not enabled, then add into exclusion
@@ -392,10 +402,11 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 			if user.PrivateKey, _, err = certificates.CreateECKey(elliptic.P384()); err != nil {
 				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
 			}
-		case tlsfs.ECKey512:
-			if user.PrivateKey, _, err = certificates.CreateECKey(elliptic.P521()); err != nil {
-				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
-			}
+		// Wait to xenolf/lego supports EC512.
+		//case tlsfs.ECKey512:
+		//	if user.PrivateKey, _, err = certificates.CreateECKey(elliptic.P521()); err != nil {
+		//		return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+		//	}
 		default:
 			return tlsfs.TLSDomainCertificate{},
 				tlsfs.WithStatus(tlsfs.OPFailed, certificates.ErrUnknownPrivateKeyType),
@@ -464,8 +475,10 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 		}
 	}
 
-	// Add the exclusion set generated from the configuration.
-	domainClient.ExcludeChallenges(acm.config.excludedChallenges)
+	// Set the dns-01 port information for dns challenges.
+	if acm.config.DNSProvider != nil && acm.config.EnableDNS01Challenge {
+		domainClient.SetChallengeProvider(acme.DNS01, acm.config.DNSProvider)
+	}
 
 	// Set the HTTP-01 port information for http challenges.
 	if acm.config.EnableHTTP01Challenge {
@@ -475,6 +488,11 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 				strconv.Itoa(acm.config.HTTPChallengePort),
 			),
 		)
+
+		// Replace default http provider to be used for challenge.
+		if acm.config.HTTPProvider != nil {
+			domainClient.SetChallengeProvider(acme.HTTP01, acm.config.HTTPProvider)
+		}
 	}
 
 	// Set the TLS-SNI-01 port information for tls challenges.
@@ -485,12 +503,15 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 				strconv.Itoa(acm.config.TLSSNIChallengePort),
 			),
 		)
+
+		// Replace default tls-sni provider to be used for challenge.
+		if acm.config.TLSSNIProvider != nil {
+			domainClient.SetChallengeProvider(acme.TLSSNI01, acm.config.TLSSNIProvider)
+		}
 	}
 
-	// Set the dns-01 port information for dns challenges.
-	if acm.config.DNSProvider != nil && acm.config.EnableDNS01Challenge {
-		domainClient.SetChallengeProvider(acme.DNS01, acm.config.DNSProvider)
-	}
+	// Add the exclusion set generated from the configuration.
+	domainClient.ExcludeChallenges(acm.config.excludedChallenges)
 
 	var doma tlsfs.TLSDomainCertificate
 	doma.User = acct.Email
@@ -500,7 +521,9 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 	// if we fail to get a valid response from server.
 	var tErrs []error
 	var bundled acme.CertificateResource
-	for attempts := 0; attempts > 3; attempts++ {
+
+	// Attempt 5 times to get certificate bundle response.
+	for attempts := 5; attempts > 0; attempts-- {
 		bundle, failures := domainClient.ObtainCertificate(
 			[]string{acct.Domain},
 			true,
@@ -641,7 +664,8 @@ func (acm *AcmeFS) Renew(email string, domain string) (tlsfs.TLSDomainCertificat
 	var tErrs []error
 	var bundled acme.CertificateResource
 
-	for attempts := 0; attempts > 3; attempts++ {
+	// Attempt 5 times to renew domain certificate.
+	for attempts := 5; attempts > 0; attempts-- {
 		bundled, err = client.RenewCertificate(certbundle, true, acm.config.MustStaple)
 		if err != nil {
 			tErrs = append(tErrs, err)

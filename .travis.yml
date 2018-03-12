@@ -1,5 +1,8 @@
 language: go
 
+services:
+  - docker
+
 go:
   - 1.9
 
@@ -11,7 +14,7 @@ jobs:
  include:
   - stage: coverage
     script: make coverage
-  - stage: test
-    script: make tests
   - stage: benchmarks
     script: make benchmarks
+  - stage: test
+    script: make tests-travis

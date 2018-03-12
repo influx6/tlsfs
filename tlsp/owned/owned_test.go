@@ -13,6 +13,11 @@ import (
 	"github.com/wirekit/tlsfs/tlsp/owned"
 )
 
+var (
+	email  = "thunder_cat@gmail.com"
+	domain = "thundercat.io"
+)
+
 func TestCustomFSWithMemFS(t *testing.T) {
 	var config owned.Config
 	config.RootFilesystem = memfs.NewMemFS()
@@ -32,7 +37,7 @@ func TestCustomFSWithMemFS(t *testing.T) {
 	}
 	tests.Passed("Should have successfully created tlsfs filesystem")
 
-	tharness.RunTLSFSTestHarness(t, fs)
+	tharness.RunTLSFSTestHarness(t, fs, domain, email)
 }
 
 func TestCustomFSWithSysFS(t *testing.T) {
@@ -56,5 +61,5 @@ func TestCustomFSWithSysFS(t *testing.T) {
 	}
 	tests.Passed("Should have successfully created tlsfs filesystem")
 
-	tharness.RunTLSFSTestHarness(t, fs)
+	tharness.RunTLSFSTestHarness(t, fs, domain, email)
 }
