@@ -854,6 +854,11 @@ func (ca *CertificateRequest) TLSCert() (tls.Certificate, error) {
 		return tls.Certificate{}, err
 	}
 
+	tlsCert.Leaf, err = x509.ParseCertificate(tlsCert.Certificate[0])
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
 	return tlsCert, nil
 }
 
