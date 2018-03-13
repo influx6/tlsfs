@@ -28,6 +28,12 @@ var (
 	_ tlsfs.TLSFS = &CustomFS{}
 )
 
+const (
+	oneSecond = 2.0
+	oneFourh  = 2.5
+	twoFourth = 4.0
+)
+
 //*************************************************************************
 // CustomFS implementation of tlsfs.TLSFS
 //*************************************************************************
@@ -49,8 +55,9 @@ type Config struct {
 	// path must exists as a means to persist it's internal state and data files.
 	RootFilesystem tlsfs.ZapFS
 
-	// SigningLifeTime sets the expected lifetime to be issued to all signed
-	// certificate requests received.
+	// SigningLifeTime is the lifetime which all certificate must be
+	// signed with, all certificate must be valid within given duration since
+	// time of signing else be renewed with given duration.
 	SigningLifeTime time.Duration
 
 	// Profile specifies the profile to be used to create the root CA certificate
@@ -60,6 +67,10 @@ type Config struct {
 	// rootCA contains the loaded or generated CA certificate which is used for
 	// all signing process for the generation of certificates.
 	rootCA *certificates.CertificateAuthority
+
+	okayRange     time.Duration
+	renewRange    time.Duration
+	criticalRange time.Duration
 }
 
 // init initializes the internal configuration of the
@@ -88,6 +99,9 @@ func (c *Config) init() error {
 	// request signing, then allocate 1 year.
 	if c.SigningLifeTime <= 0 {
 		c.SigningLifeTime = tlsfs.ThreeMonths
+		c.okayRange = time.Duration(c.SigningLifeTime.Seconds() * oneSecond)
+		c.renewRange = time.Duration(c.SigningLifeTime.Seconds() * oneFourh)
+		c.criticalRange = time.Duration(c.SigningLifeTime.Seconds() * twoFourth)
 	}
 
 	if c.Profile.ECCurve == nil {
@@ -577,19 +591,19 @@ func (cm *CustomFS) getDomainStatus(cert *x509.Certificate) tlsfs.Status {
 	left := expires.Sub(today)
 
 	// if we are around 30 or 40 days then signal renewal required.
-	if left <= tlsfs.Live30Days && left <= tlsfs.Live40Days {
+	if left <= cm.config.okayRange && left <= cm.config.renewRange {
 		return tlsfs.WithStatus(tlsfs.CARenewedRequired, nil)
 	}
 
 	// If we are below 30 days and are just within a 3 weeks duration, then return
 	// early renew.
-	if left <= tlsfs.Live30Days && left > tlsfs.Live2Weeks {
+	if left <= cm.config.renewRange && left > cm.config.criticalRange {
 		return tlsfs.WithStatus(tlsfs.CARenewalEarlyExpiration, nil)
 	}
 
 	// if we are below 30 days and have crossed the 2 weeks limit then
 	// return critical renew.
-	if left <= tlsfs.Live2Weeks {
+	if left <= cm.config.criticalRange {
 		return tlsfs.WithStatus(tlsfs.CARenewalCriticalExpiration, nil)
 	}
 
