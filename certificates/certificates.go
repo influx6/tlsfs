@@ -786,6 +786,7 @@ func (ca *CertificateRequest) TLSConfigWithRootCA(rootCAPool *x509.CertPool, ver
 	}
 
 	var tlsConfig tls.Config
+	tlsConfig.MinVersion = tls.VersionTLS12
 	tlsConfig.Certificates = append(tlsConfig.Certificates, tlsCert)
 	tlsConfig.RootCAs = rootCAPool
 
@@ -809,6 +810,7 @@ func (ca *CertificateRequest) TLSConfigWithClientCA(clientCAPool *x509.CertPool,
 	}
 
 	var tlsConfig tls.Config
+	tlsConfig.MinVersion = tls.VersionTLS12
 	tlsConfig.Certificates = append(tlsConfig.Certificates, tlsCert)
 	tlsConfig.ClientCAs = clientCAPool
 
