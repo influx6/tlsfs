@@ -311,7 +311,9 @@ func (acm *AcmeFS) GetCertificate(email string) tlsfs.CertificateFunc {
 //Serve returns a http.Handler which will cater for requests targeting
 // the `/.well-known/acme-challenge/` which responds to acme challenges
 // for http-01, else passes the request to be handled by provided handler.
-func (acm *AcmeFS) Handle(def http.Handler) http.Handler {
+// Serve will proxy all requests for the acme challenge to the ip address
+// and port provided in the Config.ListenAddr and Config.HTTPChallengePort.
+func (acm *AcmeFS) Serve(def http.Handler) http.Handler {
 	return handler{func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, acmeChallengeSubPath) {
 			def.ServeHTTP(w, r)
@@ -534,8 +536,13 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 			return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
 		}
 
-		// immediately register user and ensure we have
-		resource, err := domainClient.Register()
+		// Attempt to retrieve registration of users before we attempt to register.
+		// If we dont have one or an error occured, attempt to register.
+		resource, err := domainClient.QueryRegistration()
+		if err != nil {
+			resource, err = domainClient.Register()
+		}
+
 		if err != nil {
 			return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
 		}

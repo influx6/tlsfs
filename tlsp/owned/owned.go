@@ -5,12 +5,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
 
 	"strings"
 
+	"crypto/tls"
 	"crypto/x509"
 
 	"crypto/md5"
@@ -218,6 +220,71 @@ func NewCustomFS(config Config) (*CustomFS, error) {
 	fs.usersCache = make(map[string]*userAcct)
 	fs.renewedCache = make(map[string]chan struct{})
 	return &fs, nil
+}
+
+// GetCertificate returns a tlsfs.GetCertificateFunc which should be assigned
+// to a tls.Config.GetCertificate field to handle automatic loading and retrieval
+// of tls.Certificates through this filesystem.
+func (cm *CustomFS) GetCertificate(email string) tlsfs.CertificateFunc {
+	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		hname := hello.ServerName
+		if hname == "" {
+			return nil, errors.New("acme/autocert: missing server name")
+		}
+		if !strings.Contains(strings.Trim(hname, "."), ".") {
+			return nil, errors.New("acme/autocert: server name component count invalid")
+		}
+		if strings.ContainsAny(hname, `/\`) {
+			return nil, errors.New("acme/autocert: server name contains invalid character")
+		}
+
+		// if the requests is for a acme temporary certificate then we just need
+		// to check the cache and return that one instead.
+		if strings.HasSuffix(hname, ".acme.invalid") {
+			if cert, err := cm.config.TLSCertCache.Get(hname); err == nil {
+				return &cert, nil
+			}
+
+			if cert, err := cm.config.TLSCertCache.Get(strings.TrimSuffix(hname, ".acme.invalid")); err == nil {
+				return &cert, nil
+			}
+
+			return nil, fmt.Errorf("acme/acmefs: no cert for %q", hname)
+		}
+
+		var acct tlsfs.NewDomain
+		acct.Domain = hname
+		acct.Email = email
+		acct.KeyType = tlsfs.ECKey384
+
+		cert, _, err := cm.Create(acct, tlsfs.AgreeToTOS)
+		if err != nil {
+			return nil, err
+		}
+
+		user, err := cm.GetUser(cert.User)
+		if err != nil {
+			return nil, err
+		}
+
+		certbundle, err := certificates.EncodeCertificate(cert.Certificate)
+		if err != nil {
+			return nil, err
+		}
+
+		keybundle, err := certificates.EncodePrivateKey(user.GetPrivateKey())
+		if err != nil {
+			return nil, err
+		}
+
+		obtained, err := tls.X509KeyPair(certbundle, keybundle)
+		if err != nil {
+			return nil, err
+		}
+
+		return &obtained, nil
+	}
+
 }
 
 // GetUser returns an existing user account asocited with the provided
