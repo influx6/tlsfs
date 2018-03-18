@@ -1,9 +1,15 @@
 package tharness
 
 import (
+	"crypto/tls"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"fmt"
+
+	"github.com/influx6/faux/netutils"
 	"github.com/influx6/faux/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/wirekit/tlsfs"
@@ -22,6 +28,93 @@ func RunTLSFSTestHarness(t *testing.T, fs tlsfs.TLSFS, domain string, email stri
 	testForDomainRenewal(t, fs, domain, email)
 	testForDomainAllCertificatesRetrieval(t, fs, domain, email)
 	testForDomainRevoke(t, fs, domain, email)
+
+	testForGetCertificate(t, fs, domain, email)
+}
+
+func testForGetCertificate(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
+	tests.Header("Get Certificate Automagically for domain")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	config := new(tls.Config)
+	config.ServerName = domain
+	config.MinVersion = tls.VersionTLS12
+	getCertificate := fs.GetCertificate(email)
+	config.GetCertificate = func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		//fmt.Printf("server::Certificate: %#v -> %+q\n", hello, hello)
+		return getCertificate(hello)
+	}
+
+	addr := netutils.ResolveAddr("0.0.0.0:0")
+
+	network, err := tls.Listen("tcp", addr, config)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created listener")
+	}
+	tests.Passed("Should have successfully created listener")
+
+	go func() {
+		defer wg.Done()
+		for {
+			newConn, err := network.Accept()
+			if err != nil {
+				return
+			}
+
+			msg := make([]byte, 512)
+			n, err := newConn.Read(msg)
+			if err != nil {
+				newConn.Close()
+				return
+			}
+
+			fmt.Fprint(newConn, string(msg[:n]))
+
+			<-time.After(time.Second * 2)
+			newConn.Close()
+			return
+		}
+	}()
+
+	clientConfig := new(tls.Config)
+	clientConfig.ServerName = domain
+	clientConfig.InsecureSkipVerify = true
+	clientConfig.MinVersion = tls.VersionTLS12
+	//clientConfig.GetClientCertificate = func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+	//	fmt.Printf("client::ClientCertificate: %#v -> %+q\n", info, info)
+	//	return nil, nil
+	//}
+
+	conn, err := tls.Dial("tcp", addr, clientConfig)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully connected to server")
+	}
+	tests.Passed("Should have successfully connected to server")
+
+	hello := "Hello\r\n"
+	if _, err := fmt.Fprintf(conn, hello); err != nil {
+		tests.FailedWithError(err, "Should have written to connection")
+	}
+	tests.Passed("Should have written to connection")
+
+	msg := make([]byte, 512)
+	conn.SetReadDeadline(time.Now().Add(15 * time.Second))
+	n, err := conn.Read(msg)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully read from connection")
+	}
+	tests.Passed("Should have successfully read from connection")
+
+	if hello != string(msg[:n]) {
+		tests.Failed("Should have matched sent message")
+	}
+	tests.Passed("Should have matched sent message")
+
+	conn.Close()
+	wg.Wait()
+	network.Close()
 }
 
 func testForDomainCreationWithCSRForExistingUserDomain(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
@@ -66,7 +159,7 @@ func testForDomainCreationWithCSRForExistingUserDomain(t *testing.T, fs tlsfs.TL
 
 func testForDomainCreationWithCSR(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
 	tests.Header("Create Certificate with CSR")
-	domain = "wackomoil.com"
+	domain = "wackomoilo.com"
 
 	requestService := certificates.CertificateRequestProfile{
 		Local:        "Lagos",

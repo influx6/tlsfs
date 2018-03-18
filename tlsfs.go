@@ -294,21 +294,13 @@ type HTTPTFS interface {
 	Serve(http.Handler) http.Handler
 }
 
-// CertificateFunc defines a function type which returns a certificate
-// for a giving tls.ClientHelloInfo.
-type CertificateFunc func(*tls.ClientHelloInfo) (*tls.Certificate, error)
-
-// CERTTFS embeds the TLSFS interface implementation to provide
-// said behaviour, as well as expose a method to retrieve Certificates
-// usually which is provided to a tls.Config.GetCertificate function.
-type CERTTFS interface {
-	TLSFS
-	GetCertificate(email string) CertificateFunc
-}
-
 //*************************************************************
 // TLSFS interface and implementation
 //*************************************************************
+
+// CertificateFunc defines a function type which returns a certificate
+// for a giving tls.ClientHelloInfo.
+type CertificateFunc func(*tls.ClientHelloInfo) (*tls.Certificate, error)
 
 // AgreeToTOS defines a variable which implements the TOSAction interface.
 // It always returns true to agree to a TOS action request.
@@ -325,6 +317,7 @@ type TLSFS interface {
 	All() ([]DomainAccount, error)
 	GetUser(email string) (Account, error)
 	Revoke(email string, domain string) error
+	GetCertificate(email string) CertificateFunc
 	Get(email string, domain string) (TLSDomainCertificate, Status, error)
 	Renew(email string, domain string) (TLSDomainCertificate, Status, error)
 	Create(account NewDomain, action TOSAction) (TLSDomainCertificate, Status, error)
