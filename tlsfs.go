@@ -44,6 +44,9 @@ var (
 	// ErrUserDisagreesWithToS is returned when user disagrees with CA Terms of Service(TOS).
 	ErrUserDisagreesWithToS = errors.New("user disagrees with CA TOS")
 
+	// ErrNoEmailProvided is returned when the domain desired provides no valid email.
+	ErrNoEmailProvided = errors.New("request has no email")
+
 	// ErrInvalidDomain is returned when the domain desired is invalid
 	ErrInvalidDomain = errors.New("domain value is invalid")
 
@@ -325,6 +328,7 @@ type TLSFS interface {
 	Get(email string, domain string) (TLSDomainCertificate, Status, error)
 	Renew(email string, domain string) (TLSDomainCertificate, Status, error)
 	Create(account NewDomain, action TOSAction) (TLSDomainCertificate, Status, error)
+	CreateWithCSR(req x509.CertificateRequest, action TOSAction) (TLSDomainCertificate, Status, error)
 }
 
 // TLSDomainCertificate defines a giving structure which holds generated

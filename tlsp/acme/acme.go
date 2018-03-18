@@ -273,10 +273,34 @@ func (acm *AcmeFS) GetCertificate(email string) tlsfs.CertificateFunc {
 			return nil, fmt.Errorf("acme/acmefs: no cert for %q", hname)
 		}
 
+		var wanted tls.CurveID
+		var found bool
+		for _, curves := range []tls.CurveID{tls.CurveP384, tls.CurveP256} {
+			for _, wanted = range hello.SupportedCurves {
+				if wanted == curves {
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+
+		curve := tlsfs.ECKey384
+		switch wanted {
+		case tls.CurveP256:
+			curve = tlsfs.ECKey256
+		case tls.CurveP384:
+			curve = tlsfs.ECKey384
+		case tls.CurveP521:
+			curve = tlsfs.ECKey512
+		}
+
 		var acct tlsfs.NewDomain
 		acct.Domain = hname
 		acct.Email = email
-		acct.KeyType = tlsfs.ECKey384
+		acct.KeyType = curve
 
 		cert, _, err := acm.Create(acct, tlsfs.AgreeToTOS)
 		if err != nil {
@@ -459,6 +483,229 @@ func (acm *AcmeFS) All() ([]tlsfs.DomainAccount, error) {
 	sort.Sort(tlsfs.DomainAccounts(accounts))
 
 	return accounts, nil
+}
+
+// CreateWithCSR attempts to returns a new tlsfs.TLSDOmainCertificate for giving certificate
+// request. It creates a temporary user without a private key and uses this user to create
+// a acme client to serve said certificate requests.
+func (acm *AcmeFS) CreateWithCSR(req x509.CertificateRequest, tos tlsfs.TOSAction) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
+	var email string
+
+	if len(req.EmailAddresses) != 0 {
+		email = strings.TrimPrefix(req.EmailAddresses[0], "mailto://")
+	}
+
+	if email == "" {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrNoEmailProvided),
+			tlsfs.ErrNoEmailProvided
+	}
+
+	domain := req.Subject.CommonName
+
+	var acct tlsfs.NewDomain
+	acct.Domain = domain
+	acct.Email = email
+
+	for _, dns := range req.DNSNames {
+		acct.DNSNames = append(acct.DNSNames, dns)
+	}
+
+	// Ensure domain qualifies and is not containing a scheme
+	// or invalid values.
+	if !hostQualifies(acct.Domain) {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrInvalidDomain),
+			tlsfs.ErrInvalidDomain
+	}
+
+	var domainClient *acme.Client
+
+	// We need to attempt to load the user related to the giving email if he exists,
+	// if we do not have such a user, then create one.
+	user, err := acm.readUserFrom(acct.Email)
+	if err != nil {
+		if _, ok := err.(tlsfs.NotExists); !ok {
+			return tlsfs.TLSDomainCertificate{},
+				tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrInvalidDomain),
+				tlsfs.ErrInvalidDomain
+		}
+
+		user = new(userAcct)
+		user.Email = acct.Email
+
+		domainClient, err = acme.NewClient(acm.config.CAURL, user, acme.EC384)
+		if err != nil {
+			return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+		}
+
+		// Attempt to retrieve registration of users before we attempt to register.
+		// If we dont have one or an error occured, attempt to register.
+		resource, err := domainClient.QueryRegistration()
+		if err != nil {
+			resource, err = domainClient.Register()
+		}
+
+		if err != nil {
+			return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+		}
+
+		user.Resource = resource
+
+		if tos != nil {
+			if !tos(resource.TosURL) {
+				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+			}
+
+			// Immediately agree to CA Terms of Aggrement.
+			if err := domainClient.AgreeToTOS(); err != nil {
+				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+			}
+		} else {
+			// Immediately agree to CA Terms of Aggrement.
+			if err := domainClient.AgreeToTOS(); err != nil {
+				return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+			}
+		}
+	}
+
+	// If there exists a already signed certificate for this domain by this user, then
+	// retrieve certificate, validate it is not yet expired by it's status and return
+	// else renew certificate if about to expire or revoke if it has expired and move to
+	// create new one.
+	if existingDomain, err := acm.readDomainFrom(acct.Email, acct.Domain); err == nil {
+		currentStatus := acm.getDomainStatus(existingDomain.Certificate)
+
+		switch currentStatus.Flag() {
+		case tlsfs.CARenewedRequired, tlsfs.CACriticalRenewedRequired:
+			//return acm.Renew(acct.Email, acct.Domain)
+			return existingDomain, currentStatus, nil
+		case tlsfs.CACExpired:
+			if err := acm.Revoke(acct.Email, acct.Domain); err != nil {
+				return tlsfs.TLSDomainCertificate{},
+					tlsfs.WithStatus(tlsfs.OPFailed, errors.New("expired certificate")), err
+			}
+		default:
+			return existingDomain, currentStatus, nil
+		}
+	}
+
+	if domainClient == nil {
+		domainClient, err = acme.NewClient(acm.config.CAURL, user, acme.EC384)
+		if err != nil {
+			return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+		}
+	}
+
+	// Set the dns-01 port information for dns challenges.
+	if acm.config.DNSProvider != nil && acm.config.EnableDNS01Challenge {
+		domainClient.SetChallengeProvider(acme.DNS01, acm.config.DNSProvider)
+	}
+
+	// Set the HTTP-01 port information for http challenges.
+	if acm.config.EnableHTTP01Challenge {
+		domainClient.SetHTTPAddress(
+			net.JoinHostPort(
+				acm.config.ListenerAddr,
+				strconv.Itoa(acm.config.HTTPChallengePort),
+			),
+		)
+
+		// Replace default http provider to be used for challenge.
+		//if acm.config.HTTPProvider != nil {
+		//	domainClient.SetChallengeProvider(acme.HTTP01, acm.config.HTTPProvider)
+		//}
+	}
+
+	// Set the TLS-SNI-01 port information for tls challenges.
+	if acm.config.EnableTLSSNI01Challenge {
+		domainClient.SetTLSAddress(
+			net.JoinHostPort(
+				acm.config.ListenerAddr,
+				strconv.Itoa(acm.config.TLSSNIChallengePort),
+			),
+		)
+
+		// Replace default tls-sni provider to be used for challenge.
+		//if acm.config.TLSSNIProvider != nil {
+		//	domainClient.SetChallengeProvider(acme.TLSSNI01, acm.config.TLSSNIProvider)
+		//}
+		domainClient.SetChallengeProvider(acme.TLSSNI01, tlsSNISolver{certCache: acm.config.TLSCertCache})
+	}
+
+	// Add the exclusion set generated from the configuration.
+	domainClient.ExcludeChallenges(acm.config.excludedChallenges)
+
+	var doma tlsfs.TLSDomainCertificate
+	doma.User = acct.Email
+	doma.Domain = acct.Domain
+
+	// Attempt to retrieve certificate at most 3 times, combine all errors
+	// if we fail to get a valid response from server.
+	var tErrs []error
+	var bundled acme.CertificateResource
+
+	// Attempt 5 times to get certificate bundle response.
+	for attempts := 3; attempts > 0; attempts-- {
+		bundle, failures := domainClient.ObtainCertificateForCSR(req, true)
+
+		// if failure occured then evaluate if giving certificate domain has
+		// an error, if so validate it's not a TOS error and try again.
+		if len(failures) != 0 {
+			if err, ok := failures[acct.Domain]; ok {
+				tErrs = append(tErrs, err)
+				if _, ok := err.(acme.TOSError); ok {
+					if tos != nil {
+						if !tos(user.Resource.TosURL) {
+							return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+						}
+
+						// Immediately agree to CA Terms of Aggrement.
+						if err := domainClient.AgreeToTOS(); err != nil {
+							return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+						}
+					} else {
+						// Immediately agree to CA Terms of Aggrement.
+						if err := domainClient.AgreeToTOS(); err != nil {
+							return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+						}
+					}
+				}
+			}
+			continue
+		}
+		bundled = bundle
+		doma.Bundle = bundle
+		tErrs = nil
+		break
+	}
+
+	if len(tErrs) != 0 {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("CA error")),
+			joinError(acct.Domain, tErrs...)
+	}
+
+	doma.Certificate, err = certificates.DecodeCertificate(bundled.Certificate)
+	if err != nil {
+		return doma, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+	}
+
+	doma.IssuerCertificate, err = certificates.DecodeCertificate(bundled.IssuerCertificate)
+	if err != nil {
+		return doma, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+	}
+
+	doma.Request, err = certificates.DecodeCertificateRequest(bundled.CSR)
+	if err != nil {
+		return doma, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+	}
+
+	if err := acm.saveDomain(doma); err != nil {
+		return doma, tlsfs.WithStatus(tlsfs.OPFailed, err), err
+	}
+
+	return doma, tlsfs.WithStatus(tlsfs.Created, nil), nil
 }
 
 // Create attempts to create a given TLSDomainCertificate for the giving account.

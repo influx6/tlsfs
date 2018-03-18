@@ -237,10 +237,34 @@ func (cm *CustomFS) GetCertificate(email string) tlsfs.CertificateFunc {
 			return nil, errors.New("acme/customfs: server name contains invalid character")
 		}
 
+		var wanted tls.CurveID
+		var found bool
+		for _, curves := range []tls.CurveID{tls.CurveP384, tls.CurveP256} {
+			for _, wanted = range hello.SupportedCurves {
+				if wanted == curves {
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+
+		curve := tlsfs.ECKey384
+		switch wanted {
+		case tls.CurveP256:
+			curve = tlsfs.ECKey256
+		case tls.CurveP384:
+			curve = tlsfs.ECKey384
+		case tls.CurveP521:
+			curve = tlsfs.ECKey512
+		}
+
 		var acct tlsfs.NewDomain
 		acct.Domain = hname
 		acct.Email = email
-		acct.KeyType = tlsfs.ECKey384
+		acct.KeyType = curve
 
 		cert, _, err := cm.Create(acct, tlsfs.AgreeToTOS)
 		if err != nil {
@@ -356,6 +380,77 @@ func (cm *CustomFS) All() ([]tlsfs.DomainAccount, error) {
 	return accounts, nil
 }
 
+// CreateWithCSR attempts to returns a new tlsfs.TLSDOmainCertificate for giving certificate
+// request.
+func (cm *CustomFS) CreateWithCSR(req x509.CertificateRequest, tos tlsfs.TOSAction) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
+	var email string
+
+	if len(req.EmailAddresses) != 0 {
+		email = strings.TrimPrefix(req.EmailAddresses[0], "mailto://")
+	}
+
+	if email == "" {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrNoEmailProvided),
+			tlsfs.ErrNoEmailProvided
+	}
+
+	domain := req.Subject.CommonName
+
+	var acct tlsfs.NewDomain
+	acct.Domain = domain
+	acct.Email = email
+
+	for _, dns := range req.DNSNames {
+		acct.DNSNames = append(acct.DNSNames, dns)
+	}
+
+	// If there exists a already signed certificate for this domain by this user, then
+	// retrieve certificate, validate it is not yet expired by it's status and return
+	// else renew certificate if about to expire or revoke if it has expired and move to
+	// create new one.
+	if existingDomain, err := cm.readDomainFrom(acct.Email, acct.Domain); err == nil {
+		currentStatus := cm.getDomainStatus(existingDomain.Certificate)
+
+		switch currentStatus.Flag() {
+		case tlsfs.CARenewedRequired, tlsfs.CACriticalRenewedRequired:
+			//return cm.Renew(acct.Email, acct.Domain)
+			return existingDomain, currentStatus, nil
+		case tlsfs.CACExpired:
+			if err := cm.Revoke(acct.Email, acct.Domain); err != nil {
+				return tlsfs.TLSDomainCertificate{},
+					tlsfs.WithStatus(tlsfs.CACExpired, errors.New("expired certificate")), err
+			}
+		default:
+			return existingDomain, currentStatus, nil
+		}
+	}
+
+	var request certificates.CertificateRequest
+	request.Request = &req
+
+	// Approve requests for client and server usage, so user can use it in either way.
+	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, cm.config.SigningLifeTime); err != nil {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to sign client certificate")), err
+	}
+
+	var doma tlsfs.TLSDomainCertificate
+	doma.Bundle = acct
+	doma.Request = &req
+	doma.User = acct.Email
+	doma.Domain = acct.Domain
+	doma.Certificate = request.SecondaryCA.Certificate
+	doma.IssuerCertificate = request.SecondaryCA.RootCA
+
+	if err := cm.saveDomain(doma); err != nil {
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to save client certificate")), err
+	}
+
+	return doma, tlsfs.WithStatus(tlsfs.Created, nil), nil
+}
+
 // Create attempts to create a given TLSDomainCertificate for the giving account.
 // If a certificate already exists for the giving accounts.Domain, then the old
 // TLSDomainCertificate is returned if its has not pass the accepted expiration time
@@ -441,11 +536,11 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 
 		switch currentStatus.Flag() {
 		case tlsfs.CARenewedRequired, tlsfs.CACriticalRenewedRequired:
-			return cm.Renew(acct.Email, acct.Domain)
+			//return cm.Renew(acct.Email, acct.Domain)
 		case tlsfs.CACExpired:
 			if err := cm.Revoke(acct.Email, acct.Domain); err != nil {
 				return tlsfs.TLSDomainCertificate{},
-					tlsfs.WithStatus(tlsfs.OPFailed, errors.New("expired certificate")), err
+					tlsfs.WithStatus(tlsfs.CACExpired, errors.New("expired certificate")), err
 			}
 		default:
 			return existingDomain, currentStatus, nil
