@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"net/http"
 	"sync/atomic"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 
 	"crypto"
 
+	"crypto/tls"
 	"crypto/x509"
 
 	"github.com/influx6/faux/pools/pbytes"
@@ -264,7 +266,45 @@ func (tl tlstatus) Flag() StatusFlag {
 }
 
 //*************************************************************
-// TlsFS interface and implementation
+// CertCache interface
+//*************************************************************
+
+// CertCache defines an interface which exposes a method to cache
+// certificates through given domain name.
+type CertCache interface {
+	Delete(domain string) error
+	Get(domain string) (tls.Certificate, error)
+	Save(domain string, cert tls.Certificate) error
+}
+
+//*************************************************************
+// TLS Derivatives
+//*************************************************************
+
+// HTTPTFS embeds the TLSFS interface implementation which
+// then offers a method which returns a http.Handler which will
+// cater for requests targeting the `/.well-known/acme-challenge/`
+// which responds to a acme challenge for http-01, else passes the
+// request to be handled by provided handler.
+type HTTPTFS interface {
+	TLSFS
+	Serve(http.Handler) http.Handler
+}
+
+// CertificateFunc defines a function type which returns a certificate
+// for a giving tls.ClientHelloInfo.
+type CertificateFunc func(*tls.ClientHelloInfo) (*tls.Certificate, error)
+
+// CERTTFS embeds the TLSFS interface implementation to provide
+// said behaviour, as well as expose a method to retrieve Certificates
+// usually which is provided to a tls.Config.GetCertificate function.
+type CERTTFS interface {
+	TLSFS
+	GetCertificate(email string) CertificateFunc
+}
+
+//*************************************************************
+// TLSFS interface and implementation
 //*************************************************************
 
 // AgreeToTOS defines a variable which implements the TOSAction interface.

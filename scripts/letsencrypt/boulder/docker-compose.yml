@@ -22,6 +22,8 @@ services:
           - 4430:4430 # ACME via HTTPS
           - 4431:4431 # ACMEv2 via HTTPS
           - 4500:4500 # ct-test-srv
+          - 5001:5001 # test-tls-port
+          - 5002:5002 # test-http-port
           - 6000:6000 # gsb-test-srv
           - 8000:8000 # debug ports
           - 8001:8001

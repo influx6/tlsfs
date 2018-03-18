@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"sort"
 	"strconv"
@@ -19,7 +20,13 @@ import (
 
 	"encoding/base64"
 
+	"crypto/tls"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+
 	"github.com/wirekit/tlsfs"
+	"github.com/wirekit/tlsfs/caches/memc"
 	"github.com/wirekit/tlsfs/certificates"
 	"github.com/wirekit/tlsfs/fs/sysfs"
 	"github.com/wirekit/tlsfs/tlsp"
@@ -27,8 +34,9 @@ import (
 )
 
 const (
-	letsEncryptTermsURL = "https://acme-v01.api.letsencrypt.org/terms"
-	letsEncryptDirURL   = "https://acme-v01.api.letsencrypt.org/directory"
+	acmeChallengeSubPath = "/.well-known/acme-challenge/"
+	letsEncryptTermsURL  = "https://acme-v01.api.letsencrypt.org/terms"
+	letsEncryptDirURL    = "https://acme-v01.api.letsencrypt.org/directory"
 )
 
 var (
@@ -105,15 +113,19 @@ type Config struct {
 	// be disabled.
 	DNSProvider acme.ChallengeProvider
 
-	// HTTPProvider accompanies the EnabledHTTP01Challenge but is optional,
-	// if not set the acme client will use it's default provider else use
-	// this if provided for the http-01 challenge.
-	HTTPProvider acme.ChallengeProvider
+	//// HTTPProvider accompanies the EnabledHTTP01Challenge but is optional,
+	//// if not set the acme client will use it's default provider else use
+	//// this if provided for the http-01 challenge.
+	//HTTPProvider acme.ChallengeProvider
+	//
+	//// TLSSNIProvider accompanies the EnabledTLSSNI01Challenge but is optional,
+	//// if not set the acme client will use it's default provider else use
+	//// this if provided for the tls-sni-01 challenge.
+	//TLSSNIProvider acme.ChallengeProvider
 
-	// TLSSNIProvider accompanies the EnabledTLSSNI01Challenge but is optional,
-	// if not set the acme client will use it's default provider else use
-	// this if provided for the tls-sni-01 challenge.
-	TLSSNIProvider acme.ChallengeProvider
+	// TLSCertCache holds certificates cache retrieved through tls-sni-01
+	// challenges, it caches them till removal.
+	TLSCertCache tlsfs.CertCache
 
 	// excludedChallenges is an internal set used to initialize the given
 	// challenges to be excluded if not enabled. We require that atleast one
@@ -161,7 +173,7 @@ func (c *Config) init() {
 	// challenge is enabled, then add http-01 into excluded list, else we must enable
 	// http-01 has default challenge.
 	if !c.EnableHTTP01Challenge {
-		if !c.EnableHTTP01Challenge && !c.EnableTLSSNI01Challenge && !c.EnableDNS01Challenge {
+		if !c.EnableTLSSNI01Challenge && !c.EnableDNS01Challenge {
 			c.EnableHTTP01Challenge = true
 			c.excludedChallenges = []acme.Challenge{acme.TLSSNI01, acme.DNS01}
 		} else {
@@ -194,6 +206,12 @@ func (c *Config) init() {
 	if c.UsersFileSystem == nil {
 		c.UsersFileSystem = sysfs.NewSystemZapFS("./acme/users")
 	}
+
+	// if no tlscache is set then we need to provide one
+	// ourselves.
+	if c.TLSCertCache == nil {
+		c.TLSCertCache = memc.New()
+	}
 }
 
 // AcmeFS implements the tlsfs.TlsFS interface, providing
@@ -224,6 +242,104 @@ func NewAcmeFS(config Config) *AcmeFS {
 	fs.renewedCache = make(map[string]chan struct{})
 	return &fs
 }
+
+// GetCertificate returns a tlsfs.GetCertificateFunc which should be assigned
+// to a tls.Config.GetCertificate field to handle automatic loading and retrieval
+// of tls.Certificates through this filesystem.
+func (acm *AcmeFS) GetCertificate(email string) tlsfs.CertificateFunc {
+	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		hname := hello.ServerName
+		if hname == "" {
+			return nil, errors.New("acme/autocert: missing server name")
+		}
+		if !strings.Contains(strings.Trim(hname, "."), ".") {
+			return nil, errors.New("acme/autocert: server name component count invalid")
+		}
+		if strings.ContainsAny(hname, `/\`) {
+			return nil, errors.New("acme/autocert: server name contains invalid character")
+		}
+
+		// if the requests is for a acme temporary certificate then we just need
+		// to check the cache and return that one instead.
+		if strings.HasSuffix(hname, ".acme.invalid") {
+			if cert, err := acm.config.TLSCertCache.Get(hname); err == nil {
+				return &cert, nil
+			}
+
+			if cert, err := acm.config.TLSCertCache.Get(strings.TrimSuffix(hname, ".acme.invalid")); err == nil {
+				return &cert, nil
+			}
+
+			return nil, fmt.Errorf("acme/acmefs: no cert for %q", hname)
+		}
+
+		var acct tlsfs.NewDomain
+		acct.Domain = hname
+		acct.Email = email
+		acct.KeyType = tlsfs.ECKey384
+
+		cert, _, err := acm.Create(acct, tlsfs.AgreeToTOS)
+		if err != nil {
+			return nil, err
+		}
+
+		user, err := acm.GetUser(cert.User)
+		if err != nil {
+			return nil, err
+		}
+
+		certbundle, err := certificates.EncodeCertificate(cert.Certificate)
+		if err != nil {
+			return nil, err
+		}
+
+		keybundle, err := certificates.EncodePrivateKey(user.GetPrivateKey())
+		if err != nil {
+			return nil, err
+		}
+
+		obtained, err := tls.X509KeyPair(certbundle, keybundle)
+		if err != nil {
+			return nil, err
+		}
+
+		return &obtained, nil
+	}
+
+}
+
+//Serve returns a http.Handler which will cater for requests targeting
+// the `/.well-known/acme-challenge/` which responds to acme challenges
+// for http-01, else passes the request to be handled by provided handler.
+func (acm *AcmeFS) Handle(def http.Handler) http.Handler {
+	return handler{func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, acmeChallengeSubPath) {
+			def.ServeHTTP(w, r)
+			return
+		}
+
+		scheme := "http"
+		if r.TLS != nil {
+			scheme = "https"
+		}
+
+		upstream, err := url.Parse(fmt.Sprintf("%s://%s:%s", scheme, acm.config.ListenerAddr, acm.config.HTTPChallengePort))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		proxy := httputil.NewSingleHostReverseProxy(upstream)
+		proxy.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		proxy.ServeHTTP(w, r)
+	}}
+}
+
+type handler struct{ fn http.HandlerFunc }
+
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) { h.fn(w, r) }
 
 // GetUser returns an existing user account asocited with the provided
 // email.
@@ -490,9 +606,9 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 		)
 
 		// Replace default http provider to be used for challenge.
-		if acm.config.HTTPProvider != nil {
-			domainClient.SetChallengeProvider(acme.HTTP01, acm.config.HTTPProvider)
-		}
+		//if acm.config.HTTPProvider != nil {
+		//	domainClient.SetChallengeProvider(acme.HTTP01, acm.config.HTTPProvider)
+		//}
 	}
 
 	// Set the TLS-SNI-01 port information for tls challenges.
@@ -505,9 +621,10 @@ func (acm *AcmeFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSD
 		)
 
 		// Replace default tls-sni provider to be used for challenge.
-		if acm.config.TLSSNIProvider != nil {
-			domainClient.SetChallengeProvider(acme.TLSSNI01, acm.config.TLSSNIProvider)
-		}
+		//if acm.config.TLSSNIProvider != nil {
+		//	domainClient.SetChallengeProvider(acme.TLSSNI01, acm.config.TLSSNIProvider)
+		//}
+		domainClient.SetChallengeProvider(acme.TLSSNI01, tlsSNISolver{certCache: acm.config.TLSCertCache})
 	}
 
 	// Add the exclusion set generated from the configuration.
