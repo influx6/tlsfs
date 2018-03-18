@@ -250,13 +250,13 @@ func (acm *AcmeFS) GetCertificate(email string) tlsfs.CertificateFunc {
 	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		hname := hello.ServerName
 		if hname == "" {
-			return nil, errors.New("acme/autocert: missing server name")
+			return nil, errors.New("acme/acmefs: missing server name")
 		}
 		if !strings.Contains(strings.Trim(hname, "."), ".") {
-			return nil, errors.New("acme/autocert: server name component count invalid")
+			return nil, errors.New("acme/acmefs: server name component count invalid")
 		}
 		if strings.ContainsAny(hname, `/\`) {
-			return nil, errors.New("acme/autocert: server name contains invalid character")
+			return nil, errors.New("acme/acmefs: server name contains invalid character")
 		}
 
 		// if the requests is for a acme temporary certificate then we just need
