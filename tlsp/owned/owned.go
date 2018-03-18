@@ -221,6 +221,12 @@ func NewCustomFS(config Config) (*CustomFS, error) {
 	return &fs, nil
 }
 
+// RootCA returns the root certificate used by the giving instance.
+func (cm *CustomFS) RootCA() certificates.CertificateAuthority {
+	ca := *cm.config.rootCA
+	return ca
+}
+
 // GetCertificate returns a tlsfs.GetCertificateFunc which should be assigned
 // to a tls.Config.GetCertificate field to handle automatic loading and retrieval
 // of tls.Certificates through this filesystem.
