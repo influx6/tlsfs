@@ -327,6 +327,7 @@ type TLSFS interface {
 // TLSDomainCertificate defines a giving structure which holds generated
 // certificates with associated tls.Certificates received from
 type TLSDomainCertificate struct {
+	IsSubCA           bool                     `json:"is_ca" description:"is_ca indicates if certificate is a sub CA."`
 	User              string                   `json:"acct" description:"acct email related to the domain user"`
 	Domain            string                   `json:"domain" description:"domain generated certificate"`
 	Certificate       *x509.Certificate        `json:"certificate" description:"certificate generate for request and account"`
@@ -357,9 +358,8 @@ type NewDomain struct {
 	Domain     string  `json:"domain" description:"domain for certificate creation"`
 	CommonName string  `json:"common_name" description:"common name for certificate must not be empty else put '*'"`
 
-	// Optional fields providing extra meta-data, most CA especially like
-	// LetsEncrypt, who will not use these, as it will retrieve from Domain
-	// through AAA dns record.
+	// Optional fields providing extra meta-data, most CA implementers especially like
+	// LetsEncrypt, who will not necessarily use these in its process.
 	Version  int      `json:"version" description:"version to be used for generated certificate"`
 	Country  string   `json:"country" description:"country of owner of certificate"`
 	Province string   `json:"province" description:"province of owner of certificate"`

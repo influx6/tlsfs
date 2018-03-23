@@ -353,6 +353,14 @@ type CertificateAuthorityProfile struct {
 	Postal       string `json:"postal"`
 	CommonName   string `json:"common_name"`
 
+	// ParentCA sets the certificate parent to be used in the
+	// creation of certificate authority, this makes the generated
+	// certificate a sub CA under the parent if provided.
+	ParentCA *x509.Certificate
+
+	// ParentKey sets the parent CA certificate key which
+	ParentKey crypto.PrivateKey
+
 	// PrivateKey is for optional generated private to be used
 	// instead of the the generating one for the request profile.
 	// If this is present the PrivateKeyType, ECCurve and RSAKeyStrength
@@ -511,7 +519,17 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 		template.PermittedDNSDomains = cas.PermDNSNames
 	}
 
-	certData, err := x509.CreateCertificate(rand.Reader, &template, &template, ca.PublicKey, ca.PrivateKey)
+	parent := cas.ParentCA
+	if parent == nil {
+		parent = &template
+	}
+
+	parentKey := cas.PrivateKey
+	if parentKey == nil {
+		parentKey = ca.PrivateKey
+	}
+
+	certData, err := x509.CreateCertificate(rand.Reader, &template, parent, ca.PublicKey, parentKey)
 	if err != nil {
 		return ca, err
 	}
