@@ -469,6 +469,8 @@ func (cm *CustomFS) CreateWithCSR(req x509.CertificateRequest, tos tlsfs.TOSActi
 // If a renewal failed and the certificate is less than two weeks to expiry or within the
 // 30-days expiration, then the certificate is returned with an appropriate status to
 // indicate non-critical but important reason of failure.
+// NOTE: The certificate request attached to the returned TLSDomainCertificate is invalid
+// and is a dummy, so should not be used heavily.
 func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
 	// We need to ensure that the common name to be provided has a value else
 	// provide it a "*" asterick to allow use with any domain.
@@ -566,10 +568,11 @@ func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.T
 	profile.Address = acct.Address
 	profile.Country = acct.Country
 	profile.Province = acct.Province
+	profile.LifeTime = tlsfs.ThreeMonths
 	profile.CommonName = acct.CommonName
+	profile.Emails = []string{acct.Email}
 	profile.Organization = acct.CommonName
 	profile.PrivateKey = user.GetPrivateKey()
-	profile.Emails = []string{"mailto://" + acct.Email}
 	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
 
 	// Set the parent for the desired profile to be the CA of the filesystem.
@@ -589,7 +592,6 @@ func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.T
 	doma.User = acct.Email
 	doma.Domain = acct.Domain
 	doma.Certificate = subCA.Certificate
-	doma.Request = &x509.CertificateRequest{}
 	doma.IssuerCertificate = cm.config.rootCA.Certificate
 
 	if err := cm.saveDomain(doma); err != nil {
@@ -708,7 +710,7 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 	profile.CommonName = acct.CommonName
 	profile.Organization = acct.CommonName
 	profile.PrivateKey = user.GetPrivateKey()
-	profile.Emails = []string{"mailto://" + acct.Email}
+	profile.Emails = []string{acct.Email}
 	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
 
 	// Sign and create official x509.CertificateRequest from profile.
@@ -815,7 +817,7 @@ func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertifica
 	profile.PrivateKey = user.PrivateKey
 	profile.CommonName = acct.CommonName
 	profile.Organization = acct.CommonName
-	profile.Emails = []string{"mailto://" + acct.Email}
+	profile.Emails = []string{acct.Email}
 	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
 
 	// Sign and recreate official x509.CertificateRequest from profile.
@@ -1045,13 +1047,16 @@ func (cm *CustomFS) saveDomain(cert tlsfs.TLSDomainCertificate) error {
 		return err
 	}
 
-	reqData, err := certificates.EncodeCertificateRequest(cert.Request)
-	if err != nil {
-		return err
-	}
+	if cert.Request != nil {
+		reqData, err := certificates.EncodeCertificateRequest(cert.Request)
+		if err != nil {
+			return err
+		}
 
-	if err := writer.Add(tlsfs.DomainCertificateRequestZapName, reqData); err != nil {
-		return err
+		if err := writer.Add(tlsfs.DomainCertificateRequestZapName, reqData); err != nil {
+			return err
+		}
+
 	}
 
 	bundleJSON, err := json.Marshal(cert.Bundle)
@@ -1103,6 +1108,7 @@ func (cm *CustomFS) readDomain(zapFile tlsfs.ZapFile) (tlsfs.TLSDomainCertificat
 	}
 
 	tacc.Certificate = cert
+	tacc.IsSubCA = cert.IsCA
 
 	domainIssuerCert, err := zapFile.Find(tlsfs.IssuerDomainCertificateZapName)
 	if err != nil {
@@ -1116,17 +1122,18 @@ func (cm *CustomFS) readDomain(zapFile tlsfs.ZapFile) (tlsfs.TLSDomainCertificat
 
 	tacc.IssuerCertificate = issuercert
 
-	domainCertReq, err := zapFile.Find(tlsfs.DomainCertificateRequestZapName)
-	if err != nil {
-		return tacc, tlsfs.ErrZapFileHasNoCertificateRequest
-	}
+	if domainCertReq, err := zapFile.Find(tlsfs.DomainCertificateRequestZapName); err == nil {
+		certReq, err := certificates.DecodeCertificateRequest(domainCertReq.Data)
+		if err != nil {
+			return tacc, err
+		}
 
-	certReq, err := certificates.DecodeCertificateRequest(domainCertReq.Data)
-	if err != nil {
-		return tacc, err
+		tacc.Request = certReq
+	} else {
+		if !tacc.IsSubCA {
+			return tacc, tlsfs.ErrZapFileHasNoCertificateRequest
+		}
 	}
-
-	tacc.Request = certReq
 
 	bundleCert, err := zapFile.Find(tlsfs.DomainBundleDataZapName)
 	if err != nil {
@@ -1139,7 +1146,6 @@ func (cm *CustomFS) readDomain(zapFile tlsfs.ZapFile) (tlsfs.TLSDomainCertificat
 	}
 
 	tacc.Bundle = bundle
-	tacc.IsSubCA = cert.IsCA
 
 	return tacc, nil
 }

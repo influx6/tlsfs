@@ -21,6 +21,7 @@ import (
 // ensure that all expected behaviour is valid.
 func RunTLSFSTestHarness(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
 	testForDomainCreation(t, fs, domain, email)
+	testForDomainSubCACreation(t, fs, domain, email)
 	testForDomainCreationWithCSRForExistingUserDomain(t, fs, domain, email)
 	testForDomainCreationWithCSR(t, fs, domain, email)
 	testForDomainUserRetrieve(t, fs, domain, email)
@@ -194,6 +195,47 @@ func testForDomainCreationWithCSR(t *testing.T, fs tlsfs.TLSFS, domain string, e
 	assert.NotNil(t, testimony.Request)
 	assert.NotNil(t, testimony.Certificate)
 	assert.NotNil(t, testimony.IssuerCertificate)
+
+	distance := testimony.Certificate.NotAfter.Sub(testimony.Certificate.NotBefore)
+	assert.True(t, distance >= tlsfs.ThreeMonths)
+}
+
+func testForDomainSubCACreation(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
+	tests.Header("Create SubCA Certificate with tlsfs.NewDomain")
+
+	email = "wondertrux@gmail.com"
+	acct := tlsfs.NewDomain{
+		Version:    1,
+		Province:   "LG",
+		CommonName: "*",
+		Email:      email,
+		Domain:     domain,
+		KeyType:    tlsfs.ECKey384,
+	}
+
+	testimony, status, err := fs.CreateCA(acct, tlsfs.AgreeToTOS)
+	if err != nil {
+		if err == tlsfs.ErrNotSupported {
+			t.Skip()
+			return
+		}
+
+		tests.FailedWithError(err, "Should have successfully created certificate sub-ca for domain")
+	}
+	tests.Passed("Should have successfully created certificate sub-ca for domain")
+
+	if status.Flag() != tlsfs.Created {
+		tests.Info("Expected: %+q", tlsfs.Created)
+		tests.Info("Received: %+q", status.Flag())
+		tests.Failed("Should have successfully received acceptable certificate status")
+	}
+	tests.Passed("Should have successfully received acceptable certificate status")
+
+	assert.Nil(t, testimony.Request)
+	assert.NotNil(t, testimony.Certificate)
+	assert.NotNil(t, testimony.IssuerCertificate)
+	assert.Equal(t, testimony.User, acct.Email)
+	assert.Equal(t, testimony.Domain, strings.ToLower(acct.Domain))
 
 	distance := testimony.Certificate.NotAfter.Sub(testimony.Certificate.NotBefore)
 	assert.True(t, distance >= tlsfs.ThreeMonths)

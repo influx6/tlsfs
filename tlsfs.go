@@ -38,6 +38,10 @@ var (
 	// ErrNotFound is returned when a giving key has no related value.
 	ErrNotFound = errors.New("not found")
 
+	// ErrNotSupported is returned when a feature is not supported by an implementer of
+	// an interface.
+	ErrNotSupported = errors.New("not supported")
+
 	// ErrExpired is returned when certificate has expired.
 	ErrExpired = errors.New("not found")
 
@@ -321,6 +325,7 @@ type TLSFS interface {
 	Get(email string, domain string) (TLSDomainCertificate, Status, error)
 	Renew(email string, domain string) (TLSDomainCertificate, Status, error)
 	Create(account NewDomain, action TOSAction) (TLSDomainCertificate, Status, error)
+	CreateCA(account NewDomain, action TOSAction) (TLSDomainCertificate, Status, error)
 	CreateWithCSR(req x509.CertificateRequest, action TOSAction) (TLSDomainCertificate, Status, error)
 }
 

@@ -711,6 +711,12 @@ func (acm *AcmeFS) CreateWithCSR(req x509.CertificateRequest, tos tlsfs.TOSActio
 	return doma, tlsfs.WithStatus(tlsfs.Created, nil), nil
 }
 
+// CreateCA is not supported by this acme implementation. It's purpose is to
+// allowing signing certificate requests for sub-CAs.
+func (acm *AcmeFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
+	return tlsfs.TLSDomainCertificate{}, tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrNotSupported), tlsfs.ErrNotSupported
+}
+
 // Create attempts to create a given TLSDomainCertificate for the giving account.
 // If a certificate already exists for the giving accounts.Domain, then the old
 // TLSDomainCertificate is returned if its has not pass the accepted expiration time
