@@ -285,17 +285,7 @@ func (cm *CustomFS) GetCertificate(email string) tlsfs.CertificateFunc {
 			return nil, err
 		}
 
-		certbundle, err := certificates.EncodeCertificate(cert.Certificate)
-		if err != nil {
-			return nil, err
-		}
-
-		keybundle, err := certificates.EncodePrivateKey(user.GetPrivateKey())
-		if err != nil {
-			return nil, err
-		}
-
-		obtained, err := tls.X509KeyPair(certbundle, keybundle)
+		obtained, err := certificates.MakeTLSCertificate(cert.Certificate, user.GetPrivateKey())
 		if err != nil {
 			return nil, err
 		}
@@ -389,13 +379,13 @@ func (cm *CustomFS) All() ([]tlsfs.DomainAccount, error) {
 	return accounts, nil
 }
 
-// CreateWithCSR attempts to returns a new tlsfs.TLSDOmainCertificate for giving certificate
+// CreateWithCSR attempts to returns a new tlsfs.TLSDomainCertificate for giving certificate
 // request.
 func (cm *CustomFS) CreateWithCSR(req x509.CertificateRequest, tos tlsfs.TOSAction) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
 	var email string
 
 	if len(req.EmailAddresses) != 0 {
-		email = strings.TrimPrefix(req.EmailAddresses[0], "mailto://")
+		email = req.EmailAddresses[0]
 	}
 
 	if email == "" {
@@ -404,7 +394,12 @@ func (cm *CustomFS) CreateWithCSR(req x509.CertificateRequest, tos tlsfs.TOSActi
 			tlsfs.ErrNoEmailProvided
 	}
 
-	domain := req.Subject.CommonName
+	var domain string
+	if len(req.DNSNames) == 0 {
+		domain = req.Subject.CommonName
+	} else {
+		domain = req.DNSNames[0]
+	}
 
 	var acct tlsfs.NewDomain
 	acct.Domain = domain
@@ -472,10 +467,11 @@ func (cm *CustomFS) CreateWithCSR(req x509.CertificateRequest, tos tlsfs.TOSActi
 // NOTE: The certificate request attached to the returned TLSDomainCertificate is invalid
 // and is a dummy, so should not be used heavily.
 func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
-	// We need to ensure that the common name to be provided has a value else
-	// provide it a "*" asterick to allow use with any domain.
+	// We need to ensure that the common name is provided.
 	if acct.CommonName == "" {
-		acct.CommonName = "*"
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrInvalidDomain),
+			tlsfs.ErrInvalidDomain
 	}
 
 	// Ensure all domain is in lowercase.
@@ -699,7 +695,7 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 	}
 
 	// Create certificate request for this domain, add the common name
-	// and dns names to the ceriticate request.
+	// and dns names to the certificate request.
 	var profile certificates.CertificateRequestProfile
 	profile.Local = acct.Local
 	profile.Postal = acct.Postal
@@ -709,8 +705,9 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 	profile.Province = acct.Province
 	profile.CommonName = acct.CommonName
 	profile.Organization = acct.CommonName
-	profile.PrivateKey = user.GetPrivateKey()
 	profile.Emails = []string{acct.Email}
+	profile.PrivateKey = user.GetPrivateKey()
+	profile.DNSNames = append(profile.DNSNames, acct.Domain)
 	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
 
 	// Sign and create official x509.CertificateRequest from profile.
@@ -818,6 +815,7 @@ func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertifica
 	profile.CommonName = acct.CommonName
 	profile.Organization = acct.CommonName
 	profile.Emails = []string{acct.Email}
+	profile.DNSNames = append(profile.DNSNames, acct.Domain)
 	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
 
 	// Sign and recreate official x509.CertificateRequest from profile.

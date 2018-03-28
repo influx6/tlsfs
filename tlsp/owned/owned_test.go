@@ -18,6 +18,56 @@ var (
 	domain = "thundercat.io"
 )
 
+func TestCustomFSWithTLS2(t *testing.T) {
+	var config owned.Config
+	config.RootFilesystem = memfs.NewMemFS()
+	config.UsersFileSystem = memfs.NewMemFS()
+	config.CertificatesFileSystem = memfs.NewMemFS()
+	config.Profile = certificates.CertificateAuthorityProfile{
+		CommonName: "Dracol Certificate Authority",
+		Country:    "NG",
+		Province:   "LG",
+		Version:    1,
+		LifeTime:   tlsfs.OneYear * 5,
+	}
+
+	fs, err := owned.NewCustomFS(config)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created tlsfs filesystem")
+	}
+	tests.Passed("Should have successfully created tlsfs filesystem")
+
+	fs2, err := owned.NewCustomFS(config)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created tlsfs filesystem")
+	}
+	tests.Passed("Should have successfully created tlsfs filesystem")
+
+	tharness.RunCertificateWithTwoCA(t, fs2, fs, domain, email)
+}
+
+func TestCustomFSWithTLS(t *testing.T) {
+	var config owned.Config
+	config.RootFilesystem = memfs.NewMemFS()
+	config.UsersFileSystem = memfs.NewMemFS()
+	config.CertificatesFileSystem = memfs.NewMemFS()
+	config.Profile = certificates.CertificateAuthorityProfile{
+		CommonName: "Dracol Certificate Authority",
+		Country:    "NG",
+		Province:   "LG",
+		Version:    1,
+		LifeTime:   tlsfs.OneYear * 5,
+	}
+
+	fs, err := owned.NewCustomFS(config)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created tlsfs filesystem")
+	}
+	tests.Passed("Should have successfully created tlsfs filesystem")
+
+	tharness.CertificateConnectionTestHarness(t, fs, domain, email)
+}
+
 func TestCustomFSWithMemFS(t *testing.T) {
 	var config owned.Config
 	config.RootFilesystem = memfs.NewMemFS()

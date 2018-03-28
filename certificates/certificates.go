@@ -882,9 +882,9 @@ func (ca *CertificateRequest) TLSCert() (tls.Certificate, error) {
 	return tlsCert, nil
 }
 
-//********************************************************************************************
+//*******************************************************************************
 // Private Key Generation
-//********************************************************************************************
+//*******************************************************************************
 
 // GetPrivateKeyType returns the PrivateKeyType type which represents the
 // provided crypto key.
@@ -986,9 +986,9 @@ func EncodePrivateKey(privateKey crypto.PrivateKey) ([]byte, error) {
 	return nil, ErrUnknownPrivateKeyType
 }
 
-//*********************************************************************************
+//****************************************************************************
 // Decode Functions
-//*********************************************************************************
+//****************************************************************************
 
 // DecodeCertificate returns the raw version of the certificate and
 // any error it encountered. Certificate is encoded into a pem.Block.
@@ -1046,4 +1046,30 @@ func DecodePrivateKey(d []byte) (PrivateKeyType, crypto.PrivateKey, error) {
 	}
 
 	return pkeyType, nil, ErrUnknownPrivateKeyType
+}
+
+//****************************************************************************
+// TLS Functions
+//****************************************************************************
+
+// MakeTLSCertificate returns a tls.Certificate created from the pem-encoded
+// versions of the provided certificate and private key.
+func MakeTLSCertificate(cert *x509.Certificate, privateKey crypto.PrivateKey) (tls.Certificate, error) {
+	encodedCert, err := EncodeCertificate(cert)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	encodedKey, err := EncodePrivateKey(privateKey)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	loadedCert, err := tls.X509KeyPair(encodedCert, encodedKey)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	loadedCert.Leaf = cert
+	return loadedCert, nil
 }
