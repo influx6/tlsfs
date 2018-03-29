@@ -210,6 +210,7 @@ type CertCache interface {
 // domain.
 type CertStore interface {
 	RemoveUser(string) error
+	AddUser(account Account) error
 	RemoveDomain(string, string) error
 	GetUser(string) (DomainAccount, error)
 	AddDomain(string, TLSDomainCertificate, bool) error

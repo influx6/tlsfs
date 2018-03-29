@@ -60,6 +60,21 @@ func (sys *SysStore) RemoveDomain(email string, domain string) error {
 	return userFS.Remove(userDomain)
 }
 
+// AddUser adds the giving user into the underline filesystem.
+func (sys *SysStore) AddUser(acct tlsfs.Account) error {
+	userFS, err := sys.loadFS(acct.GetEmail())
+	if err != nil {
+		return err
+	}
+
+	zapped, err := accountEncoder.Encode(acct)
+	if err != nil {
+		return err
+	}
+
+	return userFS.WriteFile(zapped)
+}
+
 // GetUser returns a tlsfs.DomainAccount that contains a user with associated
 // certificates.
 func (sys *SysStore) GetUser(email string) (tlsfs.DomainAccount, error) {

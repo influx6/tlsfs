@@ -88,7 +88,7 @@ func (sys *MemStore) GetUser(email string) (tlsfs.DomainAccount, error) {
 		}
 
 		if userLoaded {
-			return acct, errors.New("multiuser data in zapped dir")
+			return acct, errors.New("multi-user data in zapped dir")
 		}
 
 		userAcct, err := accountDecoder.Decode(zapped)
@@ -121,6 +121,21 @@ func (sys *MemStore) AddDomain(email string, cert tlsfs.TLSDomainCertificate, re
 	}
 
 	zapped, err := domainEncoder.Encode(cert)
+	if err != nil {
+		return err
+	}
+
+	return userFS.WriteFile(zapped)
+}
+
+// AddUser adds the giving user into the underline filesystem.
+func (sys *MemStore) AddUser(acct tlsfs.Account) error {
+	userFS, err := sys.loadFS(acct.GetEmail())
+	if err != nil {
+		return err
+	}
+
+	zapped, err := accountEncoder.Encode(acct)
 	if err != nil {
 		return err
 	}
