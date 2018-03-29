@@ -2,8 +2,6 @@ package owned
 
 import (
 	"crypto"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"sort"
 	"sync"
@@ -14,12 +12,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 
-	"crypto/md5"
-
 	"crypto/elliptic"
 
 	"github.com/wirekit/tlsfs"
 	"github.com/wirekit/tlsfs/certificates"
+	"github.com/wirekit/tlsfs/encoding"
 	"github.com/wirekit/tlsfs/fs/sysfs"
 	"github.com/wirekit/tlsfs/tlsp"
 )
@@ -27,6 +24,11 @@ import (
 var (
 	// do this to ensure CustomFS implements tlsfs.TLSFS interface.
 	_ tlsfs.TLSFS = &CustomFS{}
+
+	accountEncoder encoding.AccountZapEncoder
+	accountDecoder encoding.AccountZapDecoder
+	domainEncoder  encoding.TLSDomainZapEncoder
+	domainDecoder  encoding.TLSDomainZapDecoder
 )
 
 const (
@@ -65,9 +67,9 @@ type Config struct {
 	// which will be used to sign all certificate requests and will be used.
 	Profile certificates.CertificateAuthorityProfile
 
-	// rootCA contains the loaded or generated CA certificate which is used for
+	// RootCA contains the loaded or generated CA certificate which is used for
 	// all signing process for the generation of certificates.
-	rootCA *certificates.CertificateAuthority
+	RootCA *certificates.CertificateAuthority
 
 	okayRange     time.Duration
 	renewRange    time.Duration
@@ -114,10 +116,20 @@ func (c *Config) init() error {
 	}
 
 	if c.Profile.CommonName == "" {
-		c.Profile.CommonName = "*"
+		c.Profile.CommonName = "OWNED SELF SIGNED CERTIFICATES"
 	}
 
-	// if a configuration file exists, then read it and ensure CA has not
+	if c.RootCA != nil {
+		if c.RootCA.Certificate == nil {
+			return errors.New("config.RootCA.Certificate can not be nil")
+		}
+
+		if c.RootCA.PrivateKey == nil {
+			return errors.New("config.RootCA.Certificate can not be nil")
+		}
+	}
+
+	// if a configurationkfile exists, then read it and ensure CA has not
 	// expired.
 	if configZap, err := c.RootFilesystem.Read("ca-config"); err == nil {
 		certZap, err := configZap.Find("root-ca")
@@ -144,12 +156,12 @@ func (c *Config) init() error {
 				return err
 			}
 
-			if c.rootCA == nil {
-				c.rootCA = new(certificates.CertificateAuthority)
+			if c.RootCA == nil {
+				c.RootCA = new(certificates.CertificateAuthority)
 			}
 
-			c.rootCA.Certificate = decodedCA
-			c.rootCA.PrivateKey = decodedKey
+			c.RootCA.Certificate = decodedCA
+			c.RootCA.PrivateKey = decodedKey
 			return nil
 		}
 	}
@@ -185,7 +197,7 @@ func (c *Config) init() error {
 		return err
 	}
 
-	c.rootCA = &rootCA
+	c.RootCA = &rootCA
 
 	return nil
 }
@@ -198,7 +210,7 @@ type CustomFS struct {
 	config Config
 
 	ucl        sync.RWMutex
-	usersCache map[string]*userAcct
+	usersCache map[string]*encoding.UserAcct
 
 	ccl       sync.RWMutex
 	certCache map[string]tlsfs.ZapFile
@@ -216,14 +228,14 @@ func NewCustomFS(config Config) (*CustomFS, error) {
 	var fs CustomFS
 	fs.config = config
 	fs.certCache = make(map[string]tlsfs.ZapFile)
-	fs.usersCache = make(map[string]*userAcct)
 	fs.renewedCache = make(map[string]chan struct{})
+	fs.usersCache = make(map[string]*encoding.UserAcct)
 	return &fs, nil
 }
 
 // RootCA returns the root certificate used by the giving instance.
 func (cm *CustomFS) RootCA() certificates.CertificateAuthority {
-	ca := *cm.config.rootCA
+	ca := *cm.config.RootCA
 	return ca
 }
 
@@ -274,6 +286,7 @@ func (cm *CustomFS) GetCertificate(email string) tlsfs.CertificateFunc {
 		acct.Domain = hname
 		acct.Email = email
 		acct.KeyType = curve
+		acct.CommonName = hname
 
 		cert, _, err := cm.Create(acct, tlsfs.AgreeToTOS)
 		if err != nil {
@@ -310,7 +323,7 @@ func (cm *CustomFS) GetUser(email string) (tlsfs.Account, error) {
 // but those who had access before the call to revoke will still
 // be able to use certificate till expiry.
 func (cm *CustomFS) Revoke(email string, domain string) error {
-	signature := getSignature(email, domain)
+	signature := encoding.GetDomainSignature(email, domain)
 
 	// ensure we are not working on a renewal for this domain certificate.
 	cm.rcl.Lock()
@@ -349,10 +362,10 @@ func (cm *CustomFS) All() ([]tlsfs.DomainAccount, error) {
 	userToAccount := map[string]int{}
 
 	for _, zapp := range zappers {
-		zapped, err := cm.readDomain(zapp)
+		zapped, err := domainDecoder.Decode(zapp)
 		if err != nil {
 			// if this error is due to corruption then remove.
-			if _, ok := err.(*tlsfs.ZapCorruptedError); ok {
+			if _, ok := err.(*encoding.ZapCorruptedError); ok {
 				cm.config.CertificatesFileSystem.Remove(zapp.Name)
 			}
 
@@ -434,7 +447,7 @@ func (cm *CustomFS) CreateWithCSR(req x509.CertificateRequest, tos tlsfs.TOSActi
 	request.Request = &req
 
 	// Approve requests for client and server usage, so user can use it in either way.
-	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, cm.config.SigningLifeTime); err != nil {
+	if err := cm.config.RootCA.ApproveServerClientCertificateSigningRequest(&request, cm.config.SigningLifeTime); err != nil {
 		return tlsfs.TLSDomainCertificate{},
 			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to sign client certificate")), err
 	}
@@ -470,8 +483,8 @@ func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.T
 	// We need to ensure that the common name is provided.
 	if acct.CommonName == "" {
 		return tlsfs.TLSDomainCertificate{},
-			tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrInvalidDomain),
-			tlsfs.ErrInvalidDomain
+			tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrNoCommonName),
+			tlsfs.ErrNoCommonName
 	}
 
 	// Ensure all domain is in lowercase.
@@ -495,7 +508,7 @@ func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.T
 				tlsfs.ErrInvalidDomain
 		}
 
-		user = new(userAcct)
+		user = new(encoding.UserAcct)
 		user.Email = acct.Email
 
 		switch acct.KeyType {
@@ -572,8 +585,8 @@ func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.T
 	profile.DNSNames = append(profile.DNSNames, acct.DNSNames...)
 
 	// Set the parent for the desired profile to be the CA of the filesystem.
-	profile.ParentCA = cm.config.rootCA.Certificate
-	profile.ParentKey = cm.config.rootCA.PrivateKey
+	profile.ParentCA = cm.config.RootCA.Certificate
+	profile.ParentKey = cm.config.RootCA.PrivateKey
 
 	// Sign and create official x509.CertificateRequest from profile.
 	subCA, err := certificates.CreateCertificateAuthority(profile)
@@ -588,7 +601,7 @@ func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.T
 	doma.User = acct.Email
 	doma.Domain = acct.Domain
 	doma.Certificate = subCA.Certificate
-	doma.IssuerCertificate = cm.config.rootCA.Certificate
+	doma.IssuerCertificate = cm.config.RootCA.Certificate
 
 	if err := cm.saveDomain(doma); err != nil {
 		return tlsfs.TLSDomainCertificate{},
@@ -607,10 +620,11 @@ func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.T
 // 30-days expiration, then the certificate is returned with an appropriate status to
 // indicate non-critical but important reason of failure.
 func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
-	// We need to ensure that the common name to be provided has a value else
-	// provide it a "*" asterick to allow use with any domain.
+	// We need to ensure that the common name is provided.
 	if acct.CommonName == "" {
-		acct.CommonName = "*"
+		return tlsfs.TLSDomainCertificate{},
+			tlsfs.WithStatus(tlsfs.OPFailed, tlsfs.ErrNoCommonName),
+			tlsfs.ErrNoCommonName
 	}
 
 	// Ensure all domain is in lowercase.
@@ -634,7 +648,7 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 				tlsfs.ErrInvalidDomain
 		}
 
-		user = new(userAcct)
+		user = new(encoding.UserAcct)
 		user.Email = acct.Email
 
 		switch acct.KeyType {
@@ -718,7 +732,7 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 	}
 
 	// Approve requests for client and server usage, so user can use it in either way.
-	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, cm.config.SigningLifeTime); err != nil {
+	if err := cm.config.RootCA.ApproveServerClientCertificateSigningRequest(&request, cm.config.SigningLifeTime); err != nil {
 		return tlsfs.TLSDomainCertificate{},
 			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to sign client certificate")), err
 	}
@@ -749,7 +763,7 @@ func (cm *CustomFS) Create(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.TLS
 // 30-days expiration, then the certificate is returned with an appropriate status to
 // indicate non-critical but important reason of failure.
 func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertificate, tlsfs.Status, error) {
-	mysignature := getSignature(email, domain)
+	mysignature := encoding.GetDomainSignature(email, domain)
 
 	// We first must validate that no previous renewal is
 	// not already underway for giving domain. If there is:
@@ -826,7 +840,7 @@ func (cm *CustomFS) Renew(email string, domain string) (tlsfs.TLSDomainCertifica
 	}
 
 	// Approve requests for client and server usage, so user can use it in either way.
-	if err := cm.config.rootCA.ApproveServerClientCertificateSigningRequest(&request, cm.config.SigningLifeTime); err != nil {
+	if err := cm.config.RootCA.ApproveServerClientCertificateSigningRequest(&request, cm.config.SigningLifeTime); err != nil {
 		return tlsfs.TLSDomainCertificate{},
 			tlsfs.WithStatus(tlsfs.OPFailed, errors.New("failed to sign client certificate")), err
 	}
@@ -906,7 +920,7 @@ func (cm *CustomFS) getDomainStatus(cert *x509.Certificate) tlsfs.Status {
 }
 
 func (cm *CustomFS) readDomainFrom(email string, domain string) (tlsfs.TLSDomainCertificate, error) {
-	signature := getSignature(email, domain)
+	signature := encoding.GetDomainSignature(email, domain)
 
 	// We first need to validate we are not in a renewal state where
 	// the giving domain is being attempted for renewal.
@@ -941,11 +955,11 @@ func (cm *CustomFS) readDomainFrom(email string, domain string) (tlsfs.TLSDomain
 		// A zap file should never face an issue where we fail to pass it,
 		// we automatically see it has corrupted so, delete and return an
 		// error.
-		rec, err := cm.readDomain(zapp)
+		rec, err := domainDecoder.Decode(zapp)
 		if err != nil {
 			// A zap file must never be corrupted and be unreadable, so if
 			// something happens during it's conversion, then delete it.
-			if _, ok := err.(*tlsfs.ZapCorruptedError); ok {
+			if _, ok := err.(*encoding.ZapCorruptedError); ok {
 				cm.config.CertificatesFileSystem.Remove(signature)
 			}
 			return tlsfs.TLSDomainCertificate{}, err
@@ -966,11 +980,11 @@ func (cm *CustomFS) readDomainFrom(email string, domain string) (tlsfs.TLSDomain
 		// A zap file should never face an issue where we fail to parse it,
 		// we automatically see it has corrupted so, delete and return an
 		// error.
-		rec, err := cm.readDomain(zapp)
+		rec, err := domainDecoder.Decode(zapp)
 		if err != nil {
 			// A zap file must never be corrupted and be unreadable, so if
 			// something happens during it's conversion, then delete it.
-			if _, ok := err.(*tlsfs.ZapCorruptedError); ok {
+			if _, ok := err.(*encoding.ZapCorruptedError); ok {
 				cm.config.CertificatesFileSystem.Remove(signature)
 			}
 			return tlsfs.TLSDomainCertificate{}, err
@@ -989,19 +1003,14 @@ func (cm *CustomFS) readDomainFrom(email string, domain string) (tlsfs.TLSDomain
 	// A zap file should never face an issue where we fail to parse it,
 	// we automatically see it has corrupted so, delete and return an
 	// error.
-	rec, err := cm.readDomain(zapp)
+	rec, err := domainDecoder.Decode(zapp)
 	if err != nil {
 		// A zap file must never be corrupted and be unreadable, so if
 		// something happens during it's conversion, then delete it.
-		if _, ok := err.(*tlsfs.ZapCorruptedError); ok {
+		if _, ok := err.(*encoding.ZapCorruptedError); ok {
 			cm.config.CertificatesFileSystem.Remove(signature)
 		}
 		return tlsfs.TLSDomainCertificate{}, err
-	}
-
-	if rec.Domain != domain {
-		cm.config.CertificatesFileSystem.Remove(signature)
-		return tlsfs.TLSDomainCertificate{}, tlsfs.ErrZapFileDomainMismatched
 	}
 
 	// Save domain zapp file into cache for quick access.
@@ -1012,144 +1021,8 @@ func (cm *CustomFS) readDomainFrom(email string, domain string) (tlsfs.TLSDomain
 	return rec, nil
 }
 
-func (cm *CustomFS) saveDomain(cert tlsfs.TLSDomainCertificate) error {
-	es := getSignature(cert.User, cert.Domain)
-	writer, err := cm.config.CertificatesFileSystem.Write(es)
-	if err != nil {
-		return err
-	}
-
-	if err := writer.Add(tlsfs.DomainUserDataZapName, []byte(cert.User)); err != nil {
-		return err
-	}
-
-	if err := writer.Add(tlsfs.DomainNameDataZapName, []byte(cert.Domain)); err != nil {
-		return err
-	}
-
-	issuerData, err := certificates.EncodeCertificate(cert.IssuerCertificate)
-	if err != nil {
-		return err
-	}
-
-	if err := writer.Add(tlsfs.IssuerDomainCertificateZapName, issuerData); err != nil {
-		return err
-	}
-
-	certData, err := certificates.EncodeCertificate(cert.Certificate)
-	if err != nil {
-		return err
-	}
-
-	if err := writer.Add(tlsfs.DomainCertificateZapName, certData); err != nil {
-		return err
-	}
-
-	if cert.Request != nil {
-		reqData, err := certificates.EncodeCertificateRequest(cert.Request)
-		if err != nil {
-			return err
-		}
-
-		if err := writer.Add(tlsfs.DomainCertificateRequestZapName, reqData); err != nil {
-			return err
-		}
-
-	}
-
-	bundleJSON, err := json.Marshal(cert.Bundle)
-	if err != nil {
-		return err
-	}
-
-	if err := writer.Add(tlsfs.DomainBundleDataZapName, bundleJSON); err != nil {
-		return err
-	}
-
-	// Flush all data into filesystem.
-	if err := writer.Flush(); err != nil {
-		return err
-	}
-
-	// Delete cached domain.
-	cm.ccl.Lock()
-	delete(cm.certCache, es)
-	cm.ccl.Unlock()
-	return nil
-}
-
-func (cm *CustomFS) readDomain(zapFile tlsfs.ZapFile) (tlsfs.TLSDomainCertificate, error) {
-	var tacc tlsfs.TLSDomainCertificate
-
-	domain, err := zapFile.Find(tlsfs.DomainNameDataZapName)
-	if err != nil {
-		return tacc, tlsfs.ErrZapFileHasNoAcctData
-	}
-
-	tacc.Domain = string(domain.Data)
-
-	user, err := zapFile.Find(tlsfs.DomainUserDataZapName)
-	if err != nil {
-		return tacc, tlsfs.ErrZapFileHasNoAcctData
-	}
-
-	tacc.User = string(user.Data)
-
-	domainCert, err := zapFile.Find(tlsfs.DomainCertificateZapName)
-	if err != nil {
-		return tacc, tlsfs.ErrZapFileHasNoCertificate
-	}
-
-	cert, err := certificates.DecodeCertificate(domainCert.Data)
-	if err != nil {
-		return tacc, err
-	}
-
-	tacc.Certificate = cert
-	tacc.IsSubCA = cert.IsCA
-
-	domainIssuerCert, err := zapFile.Find(tlsfs.IssuerDomainCertificateZapName)
-	if err != nil {
-		return tacc, tlsfs.ErrZapFileHasNoIssuerCertificate
-	}
-
-	issuercert, err := certificates.DecodeCertificate(domainIssuerCert.Data)
-	if err != nil {
-		return tacc, err
-	}
-
-	tacc.IssuerCertificate = issuercert
-
-	if domainCertReq, err := zapFile.Find(tlsfs.DomainCertificateRequestZapName); err == nil {
-		certReq, err := certificates.DecodeCertificateRequest(domainCertReq.Data)
-		if err != nil {
-			return tacc, err
-		}
-
-		tacc.Request = certReq
-	} else {
-		if !tacc.IsSubCA {
-			return tacc, tlsfs.ErrZapFileHasNoCertificateRequest
-		}
-	}
-
-	bundleCert, err := zapFile.Find(tlsfs.DomainBundleDataZapName)
-	if err != nil {
-		return tacc, tlsfs.ErrErrCertificateHasNoBundle
-	}
-
-	var bundle tlsfs.NewDomain
-	if err := json.Unmarshal(bundleCert.Data, &bundle); err != nil {
-		return tacc, err
-	}
-
-	tacc.Bundle = bundle
-
-	return tacc, nil
-}
-
-func (cm *CustomFS) readUserFrom(email string) (*userAcct, error) {
-	es := getSignature(email, "")
+func (cm *CustomFS) readUserFrom(email string) (*encoding.UserAcct, error) {
+	es := encoding.GetUserSignature(email)
 
 	cm.rcl.RLock()
 	if cached, ok := cm.usersCache[es]; ok {
@@ -1164,11 +1037,11 @@ func (cm *CustomFS) readUserFrom(email string) (*userAcct, error) {
 	}
 
 	// Parse the zap file format into *userAcct type.
-	user, err := cm.readUser(zapp)
+	user, err := accountDecoder.Decode(zapp)
 	if err != nil {
 		// A zap file must never be corrupted and be unreadable, so if
 		// something happens during it's conversion, then delete it.
-		if _, ok := err.(*tlsfs.ZapCorruptedError); ok {
+		if _, ok := err.(*encoding.ZapCorruptedError); ok {
 			cm.config.UsersFileSystem.Remove(es)
 		}
 
@@ -1182,73 +1055,22 @@ func (cm *CustomFS) readUserFrom(email string) (*userAcct, error) {
 	return user, nil
 }
 
-func (cm *CustomFS) readUser(zapFile tlsfs.ZapFile) (*userAcct, error) {
-	var user userAcct
-
-	userData, err := zapFile.Find(tlsfs.DomainUserDataZapName)
-	if err != nil {
-		return nil, tlsfs.ErrZapFileHasNoAcctData
-	}
-
-	user.Email = string(userData.Data)
-
-	domainPKey, err := zapFile.Find(tlsfs.DomainPrivateKeyZapName)
-	if err != nil {
-		return nil, tlsfs.ErrZapFileHasNoPKeyData
-	}
-
-	_, pkey, err := certificates.DecodePrivateKey(domainPKey.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	user.PrivateKey = pkey
-
-	return &user, nil
-}
-
 func (cm *CustomFS) saveUser(email string, privateKey crypto.PrivateKey) error {
-	es := getSignature(email, "")
-	writer, err := cm.config.UsersFileSystem.Write(es)
+	encoded, err := accountEncoder.Encode(encoding.NewUserAcct(email, privateKey, nil))
 	if err != nil {
 		return err
 	}
 
-	if err := writer.Add(tlsfs.DomainUserDataZapName, []byte(email)); err != nil {
-		return err
-	}
+	return cm.config.UsersFileSystem.WriteFile(encoded)
+}
 
-	pkeyData, err := certificates.EncodePrivateKey(privateKey)
+func (cm *CustomFS) saveDomain(domain tlsfs.TLSDomainCertificate) error {
+	encoded, err := domainEncoder.Encode(domain)
 	if err != nil {
 		return err
 	}
 
-	if err := writer.Add(tlsfs.DomainPrivateKeyZapName, pkeyData); err != nil {
-		return err
-	}
-
-	return writer.Flush()
-}
-
-//*************************************************************************
-// User struct
-//*************************************************************************
-
-// userAcct implements the acme.userAcct acct for registering users for
-// a desired domain.
-type userAcct struct {
-	Email      string
-	PrivateKey crypto.PrivateKey
-}
-
-// GetPrivateKey returns the private key associated with user.
-func (u userAcct) GetPrivateKey() crypto.PrivateKey {
-	return u.PrivateKey
-}
-
-// GetEmail returns the email for the user.
-func (u userAcct) GetEmail() string {
-	return u.Email
+	return cm.config.CertificatesFileSystem.WriteFile(encoded)
 }
 
 //***************************************************************************
@@ -1261,11 +1083,4 @@ func joinError(domain string, errs ...error) error {
 		ex = append(ex, "failed to obtain certificate as "+err.Error()+" for '"+domain+"'")
 	}
 	return errors.New(strings.Join(ex, ";"))
-}
-
-func getSignature(email, domain string) string {
-	mod := md5.New()
-	mod.Write([]byte(email))
-	mod.Write([]byte(domain))
-	return base64.StdEncoding.EncodeToString(mod.Sum(nil))
 }

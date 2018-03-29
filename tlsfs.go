@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"net/http"
 	"sync/atomic"
 	"time"
 
@@ -25,10 +24,6 @@ import (
 var (
 	bits = pbytes.NewBytesPool(128, 30)
 
-	// ErrMismatchedDecompressSize is return when giving size of decompressed is
-	// not the size expected of ZapTrack.
-	ErrMismatchedDecompressSize = errors.New("tlsfs.ZapTrack decompress data mismatched with expected size")
-
 	// ErrInvalidZapTrackBytes is returned when byte slices differes from zaptrack layout.
 	ErrInvalidZapTrackBytes = errors.New("[]byte content is not a valid ZapTrack data")
 
@@ -45,40 +40,17 @@ var (
 	// ErrExpired is returned when certificate has expired.
 	ErrExpired = errors.New("not found")
 
-	// ErrUserDisagreesWithToS is returned when user disagrees with CA Terms of Service(TOS).
-	ErrUserDisagreesWithToS = errors.New("user disagrees with CA TOS")
-
 	// ErrNoEmailProvided is returned when the domain desired provides no valid email.
 	ErrNoEmailProvided = errors.New("request has no email")
+
+	// ErrNoCommonName is returned when the domain CommonName is not provided.
+	ErrNoCommonName = errors.New("no valid common name provided")
 
 	// ErrInvalidDomain is returned when the domain desired is invalid
 	ErrInvalidDomain = errors.New("domain value is invalid")
 
 	// ErrCertificateHasNoBundle is returned when the domain desired is invalid
 	ErrErrCertificateHasNoBundle = errors.New("domain certificate has no bundled data")
-
-	// ErrZapFileDomainMismatched is returned when given domain does not match data in file.
-	ErrZapFileDomainMismatched = errors.New("ZapFile domain-account.Domain does not match expected")
-
-	// ErrZapFileHasNoAcctData is returned when a zapfile contains no acct data for a domain.
-	ErrZapFileHasNoAcctData = WithZapCorrupted(errors.New("ZapFile contains no domain-account data"))
-
-	// ErrZapFileHasNoPKeyData is returned when a zapfile contains no private key data for a domain.
-	ErrZapFileHasNoPKeyData = WithZapCorrupted(errors.New("ZapFile contains no domain-private-key data"))
-
-	// ErrZapFileHasNoUserRegistrationData is returned when a zapfile contains no user registration data for a domain.
-	ErrZapFileHasNoUserRegistrationData = WithZapCorrupted(errors.New("ZapFile contains no domain-user-registration-data data"))
-
-	// ErrZapFileHasNoCertificate is returned when a zapfile contains no domain certificate for a domain.
-	ErrZapFileHasNoCertificate = WithZapCorrupted(errors.New("ZapFile contains no domain-certificate data"))
-
-	// ErrZapFileHasNoIssuerCertificate is returned when a zapfile contains no domain issuer certificate
-	// from the CA for a domain.
-	ErrZapFileHasNoIssuerCertificate = WithZapCorrupted(errors.New("ZapFile contains no domain-issuer-certificate data"))
-
-	// ErrZapFileHasNoCertificateRequest is returned when a zapfile contains no domain certificate
-	// request or CRS, that was used to generate the domain certificate for a domain.
-	ErrZapFileHasNoCertificateRequest = WithZapCorrupted(errors.New("ZapFile contains no domain-certificate-request data"))
 )
 
 // constants of certificate life-times.
@@ -99,40 +71,6 @@ const (
 	ThreeMonths = time.Hour * 2190
 )
 
-const (
-	// DomainNameDataZapName sets the name used to store the zap track for the domain
-	// account in a zap file.
-	DomainNameDataZapName = "domain-uri-name"
-
-	// DomainUserDataZapName sets the name used to store the zap track for the domain
-	// account in a zap file.
-	DomainUserDataZapName = "domain-user-email"
-
-	// DomainBundleDataZapName sets the name used to store the zap track for the domain
-	// certificate bundle zap file
-	DomainBundleDataZapName = "domain-bundle-data"
-
-	// DomainPrivateKeyZapName sets the name used to store the zap track for the domain
-	// account in a zap file.
-	DomainPrivateKeyZapName = "domain-private-key"
-
-	// DomainCertificateZapName sets the name used to store the zap track for the domain
-	// account in a zap file.
-	DomainCertificateZapName = "domain-certificate"
-
-	// DomainUserRegistrationDataZapName sets the name used to store the zap track for the domain
-	// user registration data in a zap file.
-	DomainUserRegistrationDataZapName = "domain-user-registration-data"
-
-	// IssuerDomainCertificateZapName sets the name used to store the zap track for the domain
-	// account in a zap file.
-	IssuerDomainCertificateZapName = "domain-issuer-certificate"
-
-	// DomainCertificateRequestZapName sets the name used to store the zap track for the domain
-	// account in a zap file.
-	DomainCertificateRequestZapName = "domain-certificate-request"
-)
-
 //*************************************************************
 // NotExists interface
 //*************************************************************
@@ -145,27 +83,6 @@ const (
 type NotExists interface {
 	error
 	NotExists()
-}
-
-//*************************************************************
-// ZapFS interface
-//*************************************************************
-
-// ZapWriter defines an interface which returns a
-// set of methods to add a series of byte slice with
-// associated names to a underline zap filesystem.
-type ZapWriter interface {
-	Flush() error
-	Add(string, []byte) error
-}
-
-// ZapFS defines an interface that exposes a filesystem to
-// power the storage/retrieval of tls certificates with ease.
-type ZapFS interface {
-	Remove(string) error
-	ReadAll() ([]ZapFile, error)
-	Read(string) (ZapFile, error)
-	Write(string) (ZapWriter, error)
 }
 
 //*************************************************************
@@ -254,21 +171,21 @@ type Status interface {
 
 // WithStatus returns a StatusFlag with provided flag.
 func WithStatus(flag StatusFlag, reason error) Status {
-	return tlstatus{flag: flag, reason: reason}
+	return tlStatus{flag: flag, reason: reason}
 }
 
-type tlstatus struct {
+type tlStatus struct {
 	flag   StatusFlag
 	reason error
 }
 
 // Reason implements the Status interface Reason method.
-func (tl tlstatus) Reason() error {
+func (tl tlStatus) Reason() error {
 	return tl.reason
 }
 
 // Flag implements the Status interface Flag method.
-func (tl tlstatus) Flag() StatusFlag {
+func (tl tlStatus) Flag() StatusFlag {
 	return tl.flag
 }
 
@@ -285,21 +202,22 @@ type CertCache interface {
 }
 
 //*************************************************************
-// TLS Derivatives
+// CertStore interface and types
 //*************************************************************
 
-// HTTPTFS embeds the TLSFS interface implementation which
-// then offers a method which returns a http.Handler which will
-// cater for requests targeting the `/.well-known/acme-challenge/`
-// which responds to a acme challenge for http-01, else passes the
-// request to be handled by provided handler.
-type HTTPTFS interface {
-	TLSFS
-	Serve(http.Handler) http.Handler
+// CertStore defines an interface which exposes methods to
+// save and retrieve certificates based on Accounts and
+// domain.
+type CertStore interface {
+	RemoveUser(string) error
+	RemoveDomain(string, string) error
+	GetUser(string) (DomainAccount, error)
+	AddDomain(string, TLSDomainCertificate, bool) error
+	GetCertificate(string, string) (TLSDomainCertificate, error)
 }
 
 //*************************************************************
-// TLSFS interface and implementation
+// TLSFS interface and types
 //*************************************************************
 
 // CertificateFunc defines a function type which returns a certificate
@@ -328,6 +246,10 @@ type TLSFS interface {
 	CreateCA(account NewDomain, action TOSAction) (TLSDomainCertificate, Status, error)
 	CreateWithCSR(req x509.CertificateRequest, action TOSAction) (TLSDomainCertificate, Status, error)
 }
+
+//*************************************************************
+// Domain Certificate Types
+//*************************************************************
 
 // TLSDomainCertificate defines a giving structure which holds generated
 // certificates with associated tls.Certificates received from
@@ -397,8 +319,26 @@ func (acd DomainAccounts) Swap(i, j int)      { acd[i], acd[j] = acd[j], acd[i] 
 func (acd DomainAccounts) Less(i, j int) bool { return acd[i].Acct.GetEmail() < acd[j].Acct.GetEmail() }
 
 //*************************************************************
-// ZapFS: Tracks and Files
+// ZapFS: Tracks, Files and Interfaces
 //*************************************************************
+
+// ZapWriter defines an interface which returns a
+// set of methods to add a series of byte slice with
+// associated names to a underline zap filesystem.
+type ZapWriter interface {
+	Flush() error
+	Add(string, []byte) error
+}
+
+// ZapFS defines an interface that exposes a filesystem to
+// power the storage/retrieval of tls certificates with ease.
+type ZapFS interface {
+	Remove(string) error
+	WriteFile(ZapFile) error
+	ReadAll() ([]ZapFile, error)
+	Read(string) (ZapFile, error)
+	Write(string) (ZapWriter, error)
+}
 
 // ZapFile defines a internal file format that stores all
 // internal tracks as a single, gzipped compressed file format.
@@ -447,6 +387,16 @@ func (zt ZapFile) WriteFlatTo(w io.Writer) (int64, error) {
 // into provided writer.
 func (zt ZapFile) WriteGzippedTo(w io.Writer) (int64, error) {
 	return zt.format(true, w)
+}
+
+// AddTrack adds provided track into the giving ZapFile tracks.
+func (zt *ZapFile) AddTrack(track ZapTrack) {
+	zt.Tracks = append(zt.Tracks, track)
+}
+
+// Add adds giving name and data as a ZapTrack for the giving ZapFile.
+func (zt *ZapFile) Add(name string, data []byte) {
+	zt.Tracks = append(zt.Tracks, ZapTrack{Name: name, Data: data})
 }
 
 // UnmarshalReader takes a giving reader and attempts to decode it's
@@ -700,33 +650,6 @@ func (zt ZapTrack) WriteTo(w io.Writer) (int64, error) {
 	}
 
 	return nx, nil
-}
-
-//*************************************************************
-// CorruptedError
-//*************************************************************
-
-var _ error = ZapCorruptedError{}
-
-// ZapCorruptedError defines an zap error which contain a given reason
-// for the case of a corrupted zap file.
-type ZapCorruptedError struct {
-	Reason error
-	File   string
-}
-
-// WithZapCorrupted error returns a new instance of ZapCorruptedError.
-func WithZapCorrupted(err error) *ZapCorruptedError {
-	return &ZapCorruptedError{Reason: err}
-}
-
-// Error implements the error interface.
-func (zc ZapCorruptedError) Error() string {
-	msg := "ZapFile Corrupted: " + zc.Reason.Error()
-	if zc.File != "" {
-		msg += " File: " + zc.File
-	}
-	return msg
 }
 
 //*************************************************************

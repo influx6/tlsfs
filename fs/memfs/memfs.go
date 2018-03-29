@@ -72,7 +72,20 @@ func (mem *MemFS) RemoveAll() error {
 	return nil
 }
 
-// Write returns the giving ZapFile if found in the filesystem.
+// WriteFile adds the giving ZapFile into the filesystem.
+func (mem *MemFS) WriteFile(zapped tlsfs.ZapFile) (error) {
+	var bu bytes.Buffer
+	if _, err := zapped.WriteGzippedTo(&bu); err != nil {
+		return err
+	}
+
+	mem.fl.Lock()
+	mem.files[zapped.Name] = bu.Bytes()
+	mem.fl.Unlock()
+	return nil
+}
+
+// Write returns ZapWriter to write contents as a zap file.
 func (mem *MemFS) Write(name string) (tlsfs.ZapWriter, error) {
 	return &memWriter{
 		fs:    mem,

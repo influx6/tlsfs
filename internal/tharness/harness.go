@@ -57,6 +57,12 @@ func testForGetCertificateFSWithTwoTrustedCert(t *testing.T, fx tlsfs.TLSFS, fs 
 	}
 	tests.Passed("Should have successfully created certificate for domain")
 
+	testimonyUser, err := fx.GetUser(email)
+	if err != nil {
+		tests.FailedWithError(err, "Should have retrieved certificate user")
+	}
+	tests.Passed("Should have retrieved certificate user")
+
 	acct2 := tlsfs.NewDomain{
 		Version:    1,
 		Province:   "LG",
@@ -71,12 +77,6 @@ func testForGetCertificateFSWithTwoTrustedCert(t *testing.T, fx tlsfs.TLSFS, fs 
 		tests.FailedWithError(err, "Should have successfully created certificate for domain")
 	}
 	tests.Passed("Should have successfully created certificate for domain")
-
-	testimonyUser, err := fx.GetUser(email)
-	if err != nil {
-		tests.FailedWithError(err, "Should have retrieved certificate user")
-	}
-	tests.Passed("Should have retrieved certificate user")
 
 	testimonyUser2, err := fs.GetUser("rz@domain.com")
 	if err != nil {
@@ -101,7 +101,6 @@ func testForGetCertificateFSWithTwoTrustedCert(t *testing.T, fx tlsfs.TLSFS, fs 
 
 	config := new(tls.Config)
 	config.ClientCAs = pool
-	config.ServerName = domain
 	config.MinVersion = tls.VersionTLS12
 	config.ClientAuth = tls.RequireAndVerifyClientCert
 	config.Certificates = append(config.Certificates, tlsCert)
@@ -458,7 +457,6 @@ func testForGetCertificate(t *testing.T, fs tlsfs.TLSFS, domain string, email st
 	config.MinVersion = tls.VersionTLS12
 	getCertificate := fs.GetCertificate(email)
 	config.GetCertificate = func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		//fmt.Printf("server::Certificate: %#v -> %+q\n", hello, hello)
 		return getCertificate(hello)
 	}
 

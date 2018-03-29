@@ -143,7 +143,6 @@ func (sca SecondaryCertificateAuthority) CertificateRaw() ([]byte, error) {
 // CertificateAuthority defines a struct which contains a generated certificate template with
 // associated private and public keys.
 type CertificateAuthority struct {
-	KeyType     PrivateKeyType
 	PrivateKey  crypto.PrivateKey
 	PublicKey   crypto.PublicKey
 	Certificate *x509.Certificate
@@ -393,7 +392,7 @@ type CertificateAuthorityProfile struct {
 	DNSNames []string
 
 	// DNSNames to be excluded.
-	ExedDNSNames []string
+	ExDNSNames []string
 
 	// DNSNames to be permitted.
 	PermDNSNames []string
@@ -435,16 +434,13 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 			return ca, ErrUnknownPrivateKeyType
 		}
 
-		ca.KeyType = cas.PrivateKeyType
 	} else {
 		switch ky := cas.PrivateKey.(type) {
 		case *rsa.PrivateKey:
 			ca.PrivateKey = ky
-			ca.KeyType = RSAKeyType
 			ca.PublicKey = &ky.PublicKey
 		case *ecdsa.PrivateKey:
 			ca.PrivateKey = ky
-			ca.KeyType = ECDSAKeyType
 			ca.PublicKey = &ky.PublicKey
 		default:
 			return ca, ErrUnknownPrivateKeyType
@@ -453,7 +449,7 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 
 	// Identify signature to be used for algorithm for certificate.
 	var signature x509.SignatureAlgorithm
-	switch ca.KeyType {
+	switch cas.PrivateKeyType {
 	case RSAKeyType:
 		signature = x509.SHA512WithRSA
 		//switch cas.RSAKeyStrength {
@@ -477,8 +473,6 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 	if err != nil {
 		return ca, err
 	}
-
-	ca.KeyType = cas.PrivateKeyType
 
 	var ips []net.IP
 
@@ -509,7 +503,7 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 	template.EmailAddresses = cas.Emails
 	template.BasicConstraintsValid = true
 	template.NotAfter = before.Add(cas.LifeTime)
-	template.ExcludedDNSDomains = cas.ExedDNSNames
+	template.ExcludedDNSDomains = cas.ExDNSNames
 	template.SignatureAlgorithm = signature
 	template.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
 	template.ExtKeyUsage = append([]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}, cas.KeyUsages...)

@@ -126,8 +126,13 @@ func (sm *SystemZapFS) Read(path string) (tlsfs.ZapFile, error) {
 	return zapper, nil
 }
 
+// WriteFile writes provided ZapFile into fs.
+func (sm *SystemZapFS) WriteFile(zapped tlsfs.ZapFile) error {
+	return sm.syncFile(zapped)
+}
+
 // Write returns a ZapWriter which flushes all data added to it as a single
-// compressed zap file. All sections provded for the file will be gzipped.
+// compressed zap file. All sections provided for the file will be gzipped.
 func (sm *SystemZapFS) Write(path string) (tlsfs.ZapWriter, error) {
 	return &systemWriter{
 		fs:   sm,
@@ -138,7 +143,11 @@ func (sm *SystemZapFS) Write(path string) (tlsfs.ZapWriter, error) {
 // syncTracks takes giving path and writes giving tlsfs.ZapTrack into a giving file
 // on the filesystem, appending .zap to it's end.
 func (sm *SystemZapFS) syncTracks(path string, tracks []tlsfs.ZapTrack) error {
-	toPath := filepath.Join(sm.Dir, path)
+	return sm.syncFile(tlsfs.ZapFile{Name: path, Tracks: tracks})
+}
+
+func (sm *SystemZapFS) syncFile(zapped tlsfs.ZapFile) error {
+	toPath := filepath.Join(sm.Dir, zapped.Name)
 	if !strings.HasSuffix(toPath, ".zap") {
 		toPath += ".zap"
 	}
@@ -154,7 +163,6 @@ func (sm *SystemZapFS) syncTracks(path string, tracks []tlsfs.ZapTrack) error {
 		}
 	}
 
-	zapper := tlsfs.ZapFile{Name: path, Tracks: tracks}
 	zapperFile, err := os.Create(toPath)
 	if err != nil {
 		return err
@@ -162,7 +170,7 @@ func (sm *SystemZapFS) syncTracks(path string, tracks []tlsfs.ZapTrack) error {
 
 	defer zapperFile.Close()
 
-	_, err = zapper.WriteGzippedTo(zapperFile)
+	_, err = zapped.WriteGzippedTo(zapperFile)
 	if err != nil {
 		return err
 	}
