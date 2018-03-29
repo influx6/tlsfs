@@ -354,7 +354,7 @@ func (acm *AcmeFS) Serve(def http.Handler) http.Handler {
 			scheme = "https"
 		}
 
-		upstream, err := url.Parse(fmt.Sprintf("%s://%s:%s", scheme, acm.config.ListenerAddr, acm.config.HTTPChallengePort))
+		upstream, err := url.Parse(fmt.Sprintf("%s://%s:%d", scheme, acm.config.ListenerAddr, acm.config.HTTPChallengePort))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
