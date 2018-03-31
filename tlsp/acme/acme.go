@@ -256,12 +256,12 @@ func (acm *AcmeFS) GetCertificate(email string) tlsfs.CertificateFunc {
 		if hname == "" {
 			return nil, errors.New("acme/acmefs: missing server name")
 		}
-		if !strings.Contains(strings.Trim(hname, "."), ".") {
-			return nil, errors.New("acme/acmefs: server name component count invalid")
-		}
-		if strings.ContainsAny(hname, `/\`) {
-			return nil, errors.New("acme/acmefs: server name contains invalid character")
-		}
+		//if !strings.Contains(strings.Trim(hname, "."), ".") {
+		//	return nil, errors.New("acme/acmefs: server name component count invalid")
+		//}
+		//if strings.ContainsAny(hname, `/\`) {
+		//	return nil, errors.New("acme/acmefs: server name contains invalid character")
+		//}
 
 		// if the requests is for a acme temporary certificate then we just need
 		// to check the cache and return that one instead.

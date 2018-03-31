@@ -288,7 +288,7 @@ func testForGetCertificateWithTwoTrustedCert(t *testing.T, fs tlsfs.TLSFS, domai
 	}()
 
 	clientConfig := new(tls.Config)
-	clientConfig.RootCAs = pool
+	//clientConfig.RootCAs = pool
 	clientConfig.ServerName = domain
 	clientConfig.MinVersion = tls.VersionTLS12
 	clientConfig.Certificates = append(config.Certificates, tlsCert2)

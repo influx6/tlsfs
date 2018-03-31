@@ -172,17 +172,7 @@ func (ca CertificateAuthority) ApproveServerClientCertificateSigningRequest(req 
 	var secondaryCA SecondaryCertificateAuthority
 
 	usage := []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
-	template, err := ca.initCertificateRequest(req, lifeTime, usage)
-	if err != nil {
-		return err
-	}
-
-	certificateBytes, err := x509.CreateCertificate(rand.Reader, template, ca.Certificate, template.PublicKey, ca.PrivateKey)
-	if err != nil {
-		return err
-	}
-
-	certificate, err := x509.ParseCertificate(certificateBytes)
+	certificate, err := CreateCertificateFromRequest(ca.PrivateKey, ca.Certificate, req.Request, lifeTime, usage)
 	if err != nil {
 		return err
 	}
@@ -201,17 +191,7 @@ func (ca CertificateAuthority) ApproveServerCertificateSigningRequest(req *Certi
 	var secondaryCA SecondaryCertificateAuthority
 
 	usage := []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
-	template, err := ca.initCertificateRequest(req, lifeTime, usage)
-	if err != nil {
-		return err
-	}
-
-	certificateBytes, err := x509.CreateCertificate(rand.Reader, template, ca.Certificate, template.PublicKey, ca.PrivateKey)
-	if err != nil {
-		return err
-	}
-
-	certificate, err := x509.ParseCertificate(certificateBytes)
+	certificate, err := CreateCertificateFromRequest(ca.PrivateKey, ca.Certificate, req.Request, lifeTime, usage)
 	if err != nil {
 		return err
 	}
@@ -230,17 +210,7 @@ func (ca CertificateAuthority) ApproveClientCertificateSigningRequest(req *Certi
 	var secondaryCA SecondaryCertificateAuthority
 
 	usage := []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
-	template, err := ca.initCertificateRequest(req, lifeTime, usage)
-	if err != nil {
-		return err
-	}
-
-	certificateBytes, err := x509.CreateCertificate(rand.Reader, template, ca.Certificate, template.PublicKey, ca.PrivateKey)
-	if err != nil {
-		return err
-	}
-
-	certificate, err := x509.ParseCertificate(certificateBytes)
+	certificate, err := CreateCertificateFromRequest(ca.PrivateKey, ca.Certificate, req.Request, lifeTime, usage)
 	if err != nil {
 		return err
 	}
@@ -249,41 +219,6 @@ func (ca CertificateAuthority) ApproveClientCertificateSigningRequest(req *Certi
 	secondaryCA.Certificate = certificate
 
 	return req.ValidateAndAccept(secondaryCA, usage)
-}
-
-// initCertificateRequests initializes the certificate template needed for the request, generating
-// necessary certificate and attaching to request object.
-func (ca CertificateAuthority) initCertificateRequest(creq *CertificateRequest, lifeTime time.Duration, usages []x509.ExtKeyUsage) (*x509.Certificate, error) {
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	if err != nil {
-		return nil, err
-	}
-
-	req := creq.Request
-
-	// Back date into 5 minutes ago.
-	before := time.Now().Add(-time.Minute * 5)
-
-	var template x509.Certificate
-	template.NotBefore = before
-	template.ExtKeyUsage = usages
-	template.Subject = req.Subject
-	template.DNSNames = req.DNSNames
-	template.Signature = req.Signature
-	template.PublicKey = req.PublicKey
-	template.Extensions = req.Extensions
-	template.SerialNumber = serialNumber
-	template.IPAddresses = req.IPAddresses
-	template.Issuer = ca.Certificate.Subject
-	template.NotAfter = before.Add(lifeTime)
-	template.EmailAddresses = req.EmailAddresses
-	template.ExtraExtensions = req.ExtraExtensions
-	template.KeyUsage = x509.KeyUsageDigitalSignature
-	template.SignatureAlgorithm = req.SignatureAlgorithm
-	template.PublicKeyAlgorithm = req.PublicKeyAlgorithm
-
-	return &template, nil
 }
 
 // PrivateKeyRaw returns the raw version of the certificate's private key.
@@ -698,6 +633,49 @@ func CreateCertificateRequest(cas CertificateRequestProfile) (CertificateRequest
 	ca.Request = parsedRequest
 
 	return ca, nil
+}
+
+// CreateCertificateFromRequest creates a x509.Certificate template which will be signed
+// by ca.
+func CreateCertificateFromRequest(caKey crypto.PrivateKey, ca *x509.Certificate, req *x509.CertificateRequest, lifeTime time.Duration, usages []x509.ExtKeyUsage) (*x509.Certificate, error) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Back date into 5 minutes ago.
+	before := time.Now().Add(-time.Minute * 5)
+
+	var template x509.Certificate
+	template.NotBefore = before
+	template.Issuer = ca.Subject
+	template.ExtKeyUsage = usages
+	template.Subject = req.Subject
+	template.DNSNames = req.DNSNames
+	template.Signature = req.Signature
+	template.PublicKey = req.PublicKey
+	template.Extensions = req.Extensions
+	template.SerialNumber = serialNumber
+	template.IPAddresses = req.IPAddresses
+	template.NotAfter = before.Add(lifeTime)
+	template.EmailAddresses = req.EmailAddresses
+	template.ExtraExtensions = req.ExtraExtensions
+	template.KeyUsage = x509.KeyUsageDigitalSignature
+	template.SignatureAlgorithm = req.SignatureAlgorithm
+	template.PublicKeyAlgorithm = req.PublicKeyAlgorithm
+
+	certificateBytes, err := x509.CreateCertificate(rand.Reader, &template, ca, req.PublicKey, caKey)
+	if err != nil {
+		return nil, err
+	}
+
+	certificate, err := x509.ParseCertificate(certificateBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return certificate, nil
 }
 
 // CertificateRequest defines a struct which contains a generated certificate request template with

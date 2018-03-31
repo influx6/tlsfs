@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"time"
+
 	"github.com/influx6/faux/tests"
 	"github.com/wirekit/tlsfs"
 	"github.com/wirekit/tlsfs/certificates"
@@ -19,25 +21,13 @@ var (
 )
 
 func TestCustomFSWithTLS2(t *testing.T) {
-	var config owned.Config
-	config.RootFilesystem = memfs.NewMemFS()
-	config.UsersFileSystem = memfs.NewMemFS()
-	config.CertificatesFileSystem = memfs.NewMemFS()
-	config.Profile = certificates.CertificateAuthorityProfile{
-		CommonName: "Dracol Certificate Authority",
-		Country:    "NG",
-		Province:   "LG",
-		Version:    1,
-		LifeTime:   tlsfs.OneYear * 5,
-	}
-
-	fs, err := owned.NewCustomFS(config)
+	fs, err := owned.BasicFS("Dracol Certificate Authority", tlsfs.OneYear, time.Minute*30)
 	if err != nil {
 		tests.FailedWithError(err, "Should have successfully created tlsfs filesystem")
 	}
 	tests.Passed("Should have successfully created tlsfs filesystem")
 
-	fs2, err := owned.NewCustomFS(config)
+	fs2, err := owned.BasicFS("Dracala Certificate Authority", tlsfs.OneYear, time.Minute*30)
 	if err != nil {
 		tests.FailedWithError(err, "Should have successfully created tlsfs filesystem")
 	}

@@ -8,9 +8,9 @@ go:
   - 1.9
 
 before_script:
-  - go build -o tlsfs-make ./scripts/make.go
+#  - go build -o tlsfs-make ./scripts/make.go
 after_script:
 script:
-    - ./tlsfs-make coverage
-    - ./tlsfs-make tests
+    - make coverage
+    - make tests
 

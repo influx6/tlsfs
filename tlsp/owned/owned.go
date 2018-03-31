@@ -17,6 +17,7 @@ import (
 	"github.com/wirekit/tlsfs"
 	"github.com/wirekit/tlsfs/certificates"
 	"github.com/wirekit/tlsfs/encoding"
+	"github.com/wirekit/tlsfs/fs/memfs"
 	"github.com/wirekit/tlsfs/fs/sysfs"
 	"github.com/wirekit/tlsfs/tlsp"
 )
@@ -219,6 +220,24 @@ type CustomFS struct {
 	renewedCache map[string]chan struct{}
 }
 
+// BasicFS returns a basic instance of an instance of a CustomFS.
+func BasicFS(commonName string, caLifeTime time.Duration, signLifeTime time.Duration) (*CustomFS, error) {
+	var config Config
+	config.SigningLifeTime = signLifeTime
+	config.RootFilesystem = memfs.NewMemFS()
+	config.UsersFileSystem = memfs.NewMemFS()
+	config.CertificatesFileSystem = memfs.NewMemFS()
+	config.Profile = certificates.CertificateAuthorityProfile{
+		Version:    1,
+		Country:    "UN",
+		Province:   "UN-G",
+		CommonName: commonName,
+		LifeTime:   caLifeTime,
+	}
+
+	return NewCustomFS(config)
+}
+
 // NewCustomFS returns a new instance of the CustomFS.
 func NewCustomFS(config Config) (*CustomFS, error) {
 	if err := config.init(); err != nil {
@@ -251,12 +270,12 @@ func (cm *CustomFS) GetCertificate(email string) tlsfs.CertificateFunc {
 		if hname == "" {
 			return nil, errors.New("acme/customfs: missing server name")
 		}
-		if !strings.Contains(strings.Trim(hname, "."), ".") {
-			return nil, errors.New("acme/customfs: server name component count invalid")
-		}
-		if strings.ContainsAny(hname, `/\`) {
-			return nil, errors.New("acme/customfs: server name contains invalid character")
-		}
+		//if !strings.Contains(strings.Trim(hname, hname"."), ".") {
+		//	return nil, errors.New("acme/customfs: server name component count invalid")
+		//}
+		//if strings.ContainsAny(hname, `/\`) {
+		//	return nil, errors.New("acme/customfs: server name contains invalid character")
+		//}
 
 		var wanted tls.CurveID
 		var found bool
@@ -307,7 +326,7 @@ func (cm *CustomFS) GetCertificate(email string) tlsfs.CertificateFunc {
 	}
 }
 
-// GetUser returns an existing user account asocited with the provided
+// GetUser returns an existing user account associated with the provided
 // email.
 func (cm *CustomFS) GetUser(email string) (tlsfs.Account, error) {
 	return cm.readUserFrom(email)
