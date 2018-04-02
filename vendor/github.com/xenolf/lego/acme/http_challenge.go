@@ -3,7 +3,6 @@ package acme
 import (
 	"fmt"
 	"log"
-	"time"
 )
 
 type httpChallenge struct {
@@ -24,19 +23,13 @@ func (s *httpChallenge) Solve(chlng challenge, domain string) error {
 	// Generate the Key Authorization for the challenge
 	keyAuth, err := getKeyAuthorization(chlng.Token, s.jws.privKey)
 	if err != nil {
-		logf("[INFO][%s] acme: Trying to solve HTTP-01 but error %+q", domain, err)
 		return err
 	}
-	
-	logf("[INFO][%s] acme: Presenting to solver HTTP-01", domain)
+
 	err = s.provider.Present(domain, chlng.Token, keyAuth)
 	if err != nil {
-		logf("[INFO][%s] acme: Presentation HTTP-01 failed with error %+q", domain, err)
 		return fmt.Errorf("[%s] error presenting token: %v", domain, err)
 	}
-	
-	time.Sleep(3 * time.Second)
-	
 	defer func() {
 		err := s.provider.CleanUp(domain, chlng.Token, keyAuth)
 		if err != nil {

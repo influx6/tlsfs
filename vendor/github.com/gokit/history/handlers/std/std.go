@@ -22,6 +22,7 @@ var (
 	yellow    = color.New(color.FgHiYellow)
 	magenta   = color.New(color.FgHiMagenta)
 	bgmagenta = color.New(color.BgHiMagenta)
+	fgBlack = color.New(color.FgBlack)
 	pb        = sync.Pool{New: func() interface{} {
 		return bytes.NewBuffer(make([]byte, 1024))
 	}}
@@ -61,7 +62,7 @@ type Printer interface {
 type flatPrinter struct{}
 
 func (fp flatPrinter) Fprint(w io.Writer, b history.BugLog) error {
-	fmt.Fprintf(w, "⡿ %+s\t\t%s :%+q\n", bgmagenta.Sprint(b.Title), magenta.Sprint("Tags"), b.Tags)
+	fmt.Fprintf(w, "⡿ %+s\t\t%s :%+q\n", bgmagenta.Sprint(fgBlack.Sprintf(b.Title)), magenta.Sprint("Tags"), b.Tags)
 
 	w.Write([]byte(newline))
 

@@ -13,18 +13,17 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"regexp"
-	"time"
-
 	"github.com/cloudflare/cfssl/certdb"
 	"github.com/cloudflare/cfssl/certdb/dbconf"
 	"github.com/cloudflare/cfssl/certdb/sql"
 	"github.com/cloudflare/cfssl/log"
 	"github.com/jmhodges/clock"
 	"golang.org/x/crypto/ocsp"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"regexp"
+	"time"
 )
 
 var (
@@ -187,7 +186,7 @@ type Responder struct {
 func NewResponder(source Source) *Responder {
 	return &Responder{
 		Source: source,
-		clk:    clock.New(),
+		clk:    clock.Default(),
 	}
 }
 

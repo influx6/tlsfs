@@ -29,21 +29,15 @@ func (s *HTTPProviderServer) Present(domain, token, keyAuth string) error {
 	if s.port == "" {
 		s.port = "80"
 	}
-	
-	logf("[INFO][%s] acme: Presentation  [%s][%s]", domain, token, keyAuth)
 
 	var err error
 	s.listener, err = net.Listen("tcp", net.JoinHostPort(s.iface, s.port))
 	if err != nil {
 		return fmt.Errorf("Could not start HTTP server for challenge -> %v", err)
 	}
-	
-	logf("[INFO][%s] acme: Will serve  [%s][%s]", domain, token, keyAuth)
 
 	s.done = make(chan bool)
 	go s.serve(domain, token, keyAuth)
-	
-	logf("[INFO][%s] acme: Serving  [%s][%s]", domain, token, keyAuth)
 	return nil
 }
 
@@ -59,15 +53,11 @@ func (s *HTTPProviderServer) CleanUp(domain, token, keyAuth string) error {
 
 func (s *HTTPProviderServer) serve(domain, token, keyAuth string) {
 	path := HTTP01ChallengePath(token)
-	
-	logf("[INFO][%s] acme: Path [%s] [%s][%s]", domain, path, token, keyAuth)
 
 	// The handler validates the HOST header and request type.
 	// For validation it then writes the token the server returned with the challenge
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		logf("[INFO][%s] acme: Request [%s] [%s]", domain, r.Host, r.Method)
-		
 		if strings.HasPrefix(r.Host, domain) && r.Method == "GET" {
 			w.Header().Add("Content-Type", "text/plain")
 			w.Write([]byte(keyAuth))
@@ -85,6 +75,5 @@ func (s *HTTPProviderServer) serve(domain, token, keyAuth string) {
 	// connections, so disable KeepAlives.
 	httpServer.SetKeepAlivesEnabled(false)
 	httpServer.Serve(s.listener)
-	
 	s.done <- true
 }

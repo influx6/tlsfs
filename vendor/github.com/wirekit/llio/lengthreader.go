@@ -276,36 +276,16 @@ func (lr *LengthRecvReader) ReadHeader() (int, error) {
 
 func (lr *LengthRecvReader) readBody(p []byte) (int, error) {
 	if lr.last == lr.target && lr.rem == 0 {
+		last := lr.last
 		lr.reset()
+		return last, nil
+	}
+
+	if cap(p) == 0 {
 		return 0, nil
 	}
 
-	if len(p) == 0 {
-		return 0, nil
-	}
-
-	spaceAlloc := cap(p)
-	if spaceAlloc <= lr.rem {
-		n, err := lr.r.Read(p)
-		if err != nil && err != io.EOF {
-			return n, err
-		}
-
-		if lr.rem > 0 && n == 0 && err == io.EOF {
-			return n, ErrUncompletedTransfer
-		}
-
-		lr.last += n
-		lr.rem -= n
-
-		if lr.rem == 0 {
-			lr.reset()
-		}
-
-		return n, nil
-	}
-
-	n, err := lr.r.Read(p[0:lr.rem])
+	n, err := lr.r.Read(p)
 	if err != nil && err != io.EOF {
 		return n, err
 	}
@@ -317,11 +297,21 @@ func (lr *LengthRecvReader) readBody(p []byte) (int, error) {
 	lr.last += n
 	lr.rem -= n
 
-	if lr.rem == 0 {
-		lr.reset()
+	if lr.rem > 0 {
+		pleft := cap(p) - lr.last
+		if pleft == 0 {
+			last := lr.last
+			lr.target -= lr.last
+			lr.last = 0
+			return last, nil
+		}
+
+		return lr.readBody(p[lr.last:])
 	}
 
-	return n, nil
+	last := lr.last
+	lr.reset()
+	return last, nil
 }
 
 func (lr *LengthRecvReader) reset() {

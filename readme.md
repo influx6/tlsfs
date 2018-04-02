@@ -61,4 +61,4 @@ service.Create("bob@gmail.com", "*.westros.com")
 ```
 
 ## Vendoring
-Vendoring was done with [Govendor](https://github.com/kardianos/govendor).
+Vendoring was done with [Dep](https://github.com/golang/dep).

@@ -788,17 +788,11 @@ func parseLinks(links []string) map[string]string {
 // challenge response, only returning once it is done.
 func validate(j *jws, domain, uri string, chlng challenge) error {
 	var challengeResponse challenge
-	
-	logf("[INFO][%s] validating request: [%+q] ", domain, uri)
 
 	hdr, err := postJSON(j, uri, chlng, &challengeResponse)
 	if err != nil {
-		logf("[INFO][%s] error validating request: [%+q] -> [%+q]", domain, uri, err)
 		return err
 	}
-	
-	logf("[INFO][%s] validating request hdr: [%+q] %#v -> %+q", domain, uri, hdr)
-	logf("[INFO][%s] validating request challenge: [%+q] %#v -> %+q", domain, uri, challengeResponse)
 
 	// After the path is sent, the ACME server will access our server.
 	// Repeatedly check the server for an updated status on our request.
