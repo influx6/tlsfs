@@ -427,6 +427,8 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 	profile.StreetAddress = []string{cas.Address}
 	profile.PostalCode = []string{cas.Postal}
 
+	usages := append([]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}, cas.KeyUsages...)
+
 	var template x509.Certificate
 	template.Version = cas.Version
 	template.IsCA = true
@@ -440,17 +442,21 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 	template.NotAfter = before.Add(cas.LifeTime)
 	template.ExcludedDNSDomains = cas.ExDNSNames
 	template.SignatureAlgorithm = signature
-	template.KeyUsage = x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign
-	template.ExtKeyUsage = append([]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}, cas.KeyUsages...)
+	template.ExtKeyUsage = usages
+	template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageKeyEncipherment | x509.KeyUsageCRLSign
 
 	if len(cas.PermDNSNames) != 0 {
 		template.PermittedDNSDomainsCritical = true
 		template.PermittedDNSDomains = cas.PermDNSNames
 	}
 
+	//var doVerification bool
 	parent := cas.ParentCA
 	if parent == nil {
 		parent = &template
+	} else {
+		//doVerification = true
+		template.Issuer = parent.Subject
 	}
 
 	parentKey := cas.PrivateKey
@@ -467,6 +473,13 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 	if err != nil {
 		return ca, err
 	}
+
+	// verify new certificate comes from parent CA if any.
+	//if doVerification {
+	//	if err := parsedCertificate.CheckSignatureFrom(parent); err != nil {
+	//		return ca, err
+	//	}
+	//}
 
 	ca.Certificate = parsedCertificate
 
@@ -505,6 +518,8 @@ type CertificateRequestProfile struct {
 
 	// RSAStrength defines the strength to the use of the key type.
 	RSAKeyStrength int
+
+	ExtKeyUsage []x509.ExtKeyUsage
 
 	// Version field of certificate request.
 	// The version number is to be based on the tls version constants.
@@ -659,9 +674,10 @@ func CreateCertificateFromRequest(caKey crypto.PrivateKey, ca *x509.Certificate,
 	template.SerialNumber = serialNumber
 	template.IPAddresses = req.IPAddresses
 	template.NotAfter = before.Add(lifeTime)
+	template.AuthorityKeyId = ca.SubjectKeyId
 	template.EmailAddresses = req.EmailAddresses
 	template.ExtraExtensions = req.ExtraExtensions
-	template.KeyUsage = x509.KeyUsageDigitalSignature
+	template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment
 	template.SignatureAlgorithm = req.SignatureAlgorithm
 	template.PublicKeyAlgorithm = req.PublicKeyAlgorithm
 
@@ -1018,6 +1034,18 @@ func DecodePrivateKey(d []byte) (PrivateKeyType, crypto.PrivateKey, error) {
 	}
 
 	return pkeyType, nil, ErrUnknownPrivateKeyType
+}
+
+// GetPublicKey returns the public key of the giving private key.
+func GetPublicKey(key crypto.PrivateKey) (crypto.PrivateKey, error) {
+	switch rk := key.(type) {
+	case *rsa.PrivateKey:
+		return rk.PublicKey, nil
+	case *ecdsa.PrivateKey:
+		return rk.PublicKey, nil
+	}
+
+	return nil, ErrUnknownPrivateKeyType
 }
 
 //****************************************************************************

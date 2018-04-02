@@ -27,13 +27,7 @@ func TestCustomFSWithTLS2(t *testing.T) {
 	}
 	tests.Passed("Should have successfully created tlsfs filesystem")
 
-	fs2, err := owned.BasicFS("Dracala Certificate Authority", tlsfs.OneYear, time.Minute*30)
-	if err != nil {
-		tests.FailedWithError(err, "Should have successfully created tlsfs filesystem")
-	}
-	tests.Passed("Should have successfully created tlsfs filesystem")
-
-	tharness.RunCertificateWithTwoCA(t, fs2, fs, domain, email)
+	tharness.RunCertificateWithTwoCA(t, fs, domain, email)
 }
 
 func TestCustomFSWithTLS(t *testing.T) {

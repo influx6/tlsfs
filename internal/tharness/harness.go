@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/wirekit/tlsfs"
 	"github.com/wirekit/tlsfs/certificates"
+	"github.com/wirekit/tlsfs/tlsp/owned"
 )
 
 // RunTLSFSTestHarness provides a generic test harness that works to
@@ -32,11 +33,202 @@ func RunTLSFSTestHarness(t *testing.T, fs tlsfs.TLSFS, domain string, email stri
 	testForDomainRevoke(t, fs, domain, email)
 }
 
-func RunCertificateWithTwoCA(t *testing.T, fs tlsfs.TLSFS, fs2 tlsfs.TLSFS, domain string, email string) {
-	testForGetCertificateFSWithTwoTrustedCert(t, fs, fs2, domain, email)
+func RunCertificateWithTwoCA(t *testing.T, fs tlsfs.TLSFS, domain string, email string) {
+	testValidCertWithTwoTFS(t, fs, domain, email)
+	testValidCertWithTwoTFSAndSubCA(t, fs, domain, email)
 }
 
-func testForGetCertificateFSWithTwoTrustedCert(t *testing.T, fx tlsfs.TLSFS, fs tlsfs.TLSFS, domain string, email string) {
+func testValidCertWithTwoTFSAndSubCA(t *testing.T, fx tlsfs.TLSFS, domain string, email string) {
+	tests.Header("Use Certificate and CA for two trusted CA and SubCA on domain")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	subCAcct := tlsfs.NewDomain{
+		Version:    1,
+		Province:   "LG",
+		CommonName: "RACK CA",
+		Email:      "subca@ca.com",
+		Domain:     "rackiwas.com",
+		KeyType:    tlsfs.ECKey384,
+	}
+
+	subCA, _, err := fx.CreateCA(subCAcct, tlsfs.AgreeToTOS)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created certificate for domain")
+	}
+	tests.Passed("Should have successfully created certificate for domain")
+
+	encoded, err := certificates.EncodeCertificate(subCA.Certificate)
+	if err != nil {
+		tests.FailedWithError(err, "Should have created tls.certificate")
+	}
+	tests.Passed("Should have created tls.certificate")
+
+	subCAUser, err := fx.GetUser("subca@ca.com")
+	if err != nil {
+		tests.FailedWithError(err, "Should have retrieved certificate user")
+	}
+	tests.Passed("Should have retrieved certificate user")
+
+	rx, err := owned.FromCA(subCA.Certificate, subCAUser.GetPrivateKey(), time.Minute*30)
+	if err != nil {
+		tests.FailedWithError(err, "Should have created sub ca")
+	}
+	tests.Passed("Should have created sub ca")
+
+	acct := tlsfs.NewDomain{
+		Version:    1,
+		Province:   "LG",
+		CommonName: "RACK",
+		Email:      email,
+		Domain:     domain,
+		KeyType:    tlsfs.ECKey384,
+	}
+
+	testimony, _, err := rx.Create(acct, tlsfs.AgreeToTOS)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created certificate for domain")
+	}
+	tests.Passed("Should have successfully created certificate for domain")
+
+	testimonyUser, err := rx.GetUser(email)
+	if err != nil {
+		tests.FailedWithError(err, "Should have retrieved certificate user")
+	}
+	tests.Passed("Should have retrieved certificate user")
+
+	tlsCert, err := certificates.MakeTLSCertificate(testimony.Certificate, testimonyUser.GetPrivateKey())
+	if err != nil {
+		tests.FailedWithError(err, "Should have created tls.certificate")
+	}
+	tests.Passed("Should have created tls.certificate")
+
+	acct2 := tlsfs.NewDomain{
+		Version:    1,
+		Province:   "LG",
+		CommonName: "UL CA",
+		Domain:     domain,
+		Email:      email,
+		KeyType:    tlsfs.ECKey384,
+	}
+
+	fs, err := owned.BasicFS("WAAA", 3*time.Hour, 30*time.Minute)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created certificate CA")
+	}
+	tests.Passed("Should have successfully created certificate CA")
+
+	testimony2, _, err := fs.Create(acct2, tlsfs.AgreeToTOS)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created certificate for domain")
+	}
+	tests.Passed("Should have successfully created certificate for domain")
+
+	testimonyUser2, err := fs.GetUser(email)
+	if err != nil {
+		tests.FailedWithError(err, "Should have retrieved certificate user")
+	}
+	tests.Passed("Should have retrieved certificate user")
+
+	tlsCert2, err := certificates.MakeTLSCertificate(testimony2.Certificate, testimonyUser2.GetPrivateKey())
+	if err != nil {
+		tests.FailedWithError(err, "Should have created tls.certificate")
+	}
+	tests.Passed("Should have created tls.certificate")
+
+	decoded, err := certificates.DecodeCertificate(encoded)
+	if err != nil {
+		tests.FailedWithError(err, "Should have created tls.certificate")
+	}
+	tests.Passed("Should have created tls.certificate")
+
+	pool := x509.NewCertPool()
+	pool.AddCert(subCA.Certificate)
+
+	config := new(tls.Config)
+	config.ClientCAs = pool
+	config.MinVersion = tls.VersionTLS12
+	config.ClientAuth = tls.RequireAndVerifyClientCert
+	config.Certificates = append(config.Certificates, tlsCert)
+	config.BuildNameToCertificate()
+
+	addr := netutils.ResolveAddr("0.0.0.0:0")
+	network, err := tls.Listen("tcp", addr, config)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created listener")
+	}
+	tests.Passed("Should have successfully created listener")
+
+	go func() {
+		defer wg.Done()
+		for {
+			newConn, err := network.Accept()
+			if err != nil {
+				return
+			}
+
+			msg := make([]byte, 512)
+			n, err := newConn.Read(msg)
+			if err != nil {
+				newConn.Close()
+				return
+			}
+
+			fmt.Fprint(newConn, string(msg[:n]))
+
+			<-time.After(time.Second * 2)
+			newConn.Close()
+			return
+		}
+	}()
+
+	pool2 := x509.NewCertPool()
+	pool2.AddCert(decoded)
+
+	clientConfig := new(tls.Config)
+	clientConfig.RootCAs = pool2
+	clientConfig.ServerName = domain
+	clientConfig.MinVersion = tls.VersionTLS12
+	clientConfig.Certificates = append(config.Certificates, tlsCert2)
+	clientConfig.BuildNameToCertificate()
+
+	conn, err := tls.Dial("tcp", addr, clientConfig)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully connected to server")
+	}
+	tests.Passed("Should have successfully connected to server")
+
+	hello := "Hello\r\n"
+	if _, err := fmt.Fprintf(conn, hello); err != nil {
+		tests.FailedWithError(err, "Should have written to connection")
+	}
+	tests.Passed("Should have written to connection")
+
+	msg := make([]byte, 512)
+	conn.SetReadDeadline(time.Now().Add(15 * time.Second))
+	n, err := conn.Read(msg)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully read from connection")
+	}
+	tests.Passed("Should have successfully read from connection")
+
+	if hello != string(msg[:n]) {
+		tests.Failed("Should have matched sent message")
+	}
+	tests.Passed("Should have matched sent message")
+
+	conn.Close()
+	wg.Wait()
+	network.Close()
+
+	if err := fs.Revoke(email, domain); err != nil {
+		tests.FailedWithError(err, "Should have revoked certificate")
+	}
+	tests.Passed("Should have revoked certificate")
+}
+
+func testValidCertWithTwoTFS(t *testing.T, fx tlsfs.TLSFS, domain string, email string) {
 	tests.Header("Use Certificate and CA for two trusted CA on domain")
 
 	var wg sync.WaitGroup
@@ -45,7 +237,7 @@ func testForGetCertificateFSWithTwoTrustedCert(t *testing.T, fx tlsfs.TLSFS, fs 
 	acct := tlsfs.NewDomain{
 		Version:    1,
 		Province:   "LG",
-		CommonName: domain,
+		CommonName: "RACK",
 		Email:      email,
 		Domain:     domain,
 		KeyType:    tlsfs.ECKey384,
@@ -63,14 +255,26 @@ func testForGetCertificateFSWithTwoTrustedCert(t *testing.T, fx tlsfs.TLSFS, fs 
 	}
 	tests.Passed("Should have retrieved certificate user")
 
+	tlsCert, err := certificates.MakeTLSCertificate(testimony.Certificate, testimonyUser.GetPrivateKey())
+	if err != nil {
+		tests.FailedWithError(err, "Should have created tls.certificate")
+	}
+	tests.Passed("Should have created tls.certificate")
+
 	acct2 := tlsfs.NewDomain{
 		Version:    1,
 		Province:   "LG",
-		CommonName: domain,
+		CommonName: "RACKI",
 		Domain:     domain,
 		Email:      "rz@domain.com",
 		KeyType:    tlsfs.ECKey384,
 	}
+
+	fs, err := owned.BasicFS("WAAA", 3*time.Hour, 30*time.Minute)
+	if err != nil {
+		tests.FailedWithError(err, "Should have successfully created certificate CA")
+	}
+	tests.Passed("Should have successfully created certificate CA")
 
 	testimony2, _, err := fs.Create(acct2, tlsfs.AgreeToTOS)
 	if err != nil {
@@ -83,12 +287,6 @@ func testForGetCertificateFSWithTwoTrustedCert(t *testing.T, fx tlsfs.TLSFS, fs 
 		tests.FailedWithError(err, "Should have retrieved certificate user")
 	}
 	tests.Passed("Should have retrieved certificate user")
-
-	tlsCert, err := certificates.MakeTLSCertificate(testimony.Certificate, testimonyUser.GetPrivateKey())
-	if err != nil {
-		tests.FailedWithError(err, "Should have created tls.certificate")
-	}
-	tests.Passed("Should have created tls.certificate")
 
 	tlsCert2, err := certificates.MakeTLSCertificate(testimony2.Certificate, testimonyUser2.GetPrivateKey())
 	if err != nil {
@@ -137,8 +335,10 @@ func testForGetCertificateFSWithTwoTrustedCert(t *testing.T, fx tlsfs.TLSFS, fs 
 		}
 	}()
 
+	pool2 := x509.NewCertPool()
+	pool2.AddCert(testimony.IssuerCertificate)
 	clientConfig := new(tls.Config)
-	clientConfig.RootCAs = pool
+	clientConfig.RootCAs = pool2
 	clientConfig.ServerName = domain
 	clientConfig.MinVersion = tls.VersionTLS12
 	clientConfig.Certificates = append(config.Certificates, tlsCert2)
@@ -288,7 +488,7 @@ func testForGetCertificateWithTwoTrustedCert(t *testing.T, fs tlsfs.TLSFS, domai
 	}()
 
 	clientConfig := new(tls.Config)
-	//clientConfig.RootCAs = pool
+	clientConfig.RootCAs = pool
 	clientConfig.ServerName = domain
 	clientConfig.MinVersion = tls.VersionTLS12
 	clientConfig.Certificates = append(config.Certificates, tlsCert2)

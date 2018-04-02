@@ -128,77 +128,77 @@ func (c *Config) init() error {
 		if c.RootCA.PrivateKey == nil {
 			return errors.New("config.RootCA.Certificate can not be nil")
 		}
-	}
-
-	// if a configurationkfile exists, then read it and ensure CA has not
-	// expired.
-	if configZap, err := c.RootFilesystem.Read("ca-config"); err == nil {
-		certZap, err := configZap.Find("root-ca")
-		if err != nil {
-			return err
-		}
-
-		decodedCA, err := certificates.DecodeCertificate(certZap.Data)
-		if err != nil {
-			return err
-		}
-
-		// if loaded certificate is still valid, then attempt to load certificate
-		// key into configuration.
-		today := time.Now()
-		if today.After(decodedCA.NotAfter) {
-			keyZap, err := configZap.Find("root-key")
+	} else {
+		// if a configurationkfile exists, then read it and ensure CA has not
+		// expired.
+		if configZap, err := c.RootFilesystem.Read("ca-config"); err == nil {
+			certZap, err := configZap.Find("root-ca")
 			if err != nil {
 				return err
 			}
 
-			_, decodedKey, err := certificates.DecodePrivateKey(keyZap.Data)
+			decodedCA, err := certificates.DecodeCertificate(certZap.Data)
 			if err != nil {
 				return err
 			}
 
-			if c.RootCA == nil {
-				c.RootCA = new(certificates.CertificateAuthority)
+			// if loaded certificate is still valid, then attempt to load certificate
+			// key into configuration.
+			today := time.Now()
+			if today.After(decodedCA.NotAfter) {
+				keyZap, err := configZap.Find("root-key")
+				if err != nil {
+					return err
+				}
+
+				_, decodedKey, err := certificates.DecodePrivateKey(keyZap.Data)
+				if err != nil {
+					return err
+				}
+
+				if c.RootCA == nil {
+					c.RootCA = new(certificates.CertificateAuthority)
+				}
+
+				c.RootCA.Certificate = decodedCA
+				c.RootCA.PrivateKey = decodedKey
+				return nil
 			}
-
-			c.RootCA.Certificate = decodedCA
-			c.RootCA.PrivateKey = decodedKey
-			return nil
 		}
+
+		// generate CA certificate for configuration, as it provides the issuer
+		// certificate to be used for signing others.
+		rootCA, err := certificates.CreateCertificateAuthority(c.Profile)
+		if err != nil {
+			return err
+		}
+
+		configWriter, err := c.RootFilesystem.Write("ca-config")
+		if err != nil {
+			return err
+		}
+
+		// Save certificate and private-key as zap file.
+		encodedCA, err := rootCA.CertificateRaw()
+		if err != nil {
+			return err
+		}
+
+		configWriter.Add("root-ca", encodedCA)
+
+		encodedKey, err := rootCA.PrivateKeyRaw()
+		if err != nil {
+			return err
+		}
+
+		configWriter.Add("root-key", encodedKey)
+
+		if err = configWriter.Flush(); err != nil {
+			return err
+		}
+
+		c.RootCA = &rootCA
 	}
-
-	// generate CA certificate for configuration, as it provides the issuer
-	// certificate to be used for signing others.
-	rootCA, err := certificates.CreateCertificateAuthority(c.Profile)
-	if err != nil {
-		return err
-	}
-
-	configWriter, err := c.RootFilesystem.Write("ca-config")
-	if err != nil {
-		return err
-	}
-
-	// Save certificate and private-key as zap file.
-	encodedCA, err := rootCA.CertificateRaw()
-	if err != nil {
-		return err
-	}
-
-	configWriter.Add("root-ca", encodedCA)
-
-	encodedKey, err := rootCA.PrivateKeyRaw()
-	if err != nil {
-		return err
-	}
-
-	configWriter.Add("root-key", encodedKey)
-
-	if err = configWriter.Flush(); err != nil {
-		return err
-	}
-
-	c.RootCA = &rootCA
 
 	return nil
 }
@@ -220,6 +220,30 @@ type CustomFS struct {
 	renewedCache map[string]chan struct{}
 }
 
+// FromCA returns a new instance of CustomFS using the provided certificate and key has Root CA.
+func FromCA(sub *x509.Certificate, key crypto.PrivateKey, signLifeTime time.Duration) (*CustomFS, error) {
+	if !sub.IsCA {
+		return nil, errors.New("only CA is allowed")
+	}
+
+	pk, err := certificates.GetPublicKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	var config Config
+	config.SigningLifeTime = signLifeTime
+	config.RootFilesystem = memfs.NewMemFS()
+	config.UsersFileSystem = memfs.NewMemFS()
+	config.CertificatesFileSystem = memfs.NewMemFS()
+	config.RootCA = new(certificates.CertificateAuthority)
+	config.RootCA.PublicKey = pk
+	config.RootCA.PrivateKey = key
+	config.RootCA.Certificate = sub
+
+	return NewCustomFS(config)
+}
+
 // BasicFS returns a basic instance of an instance of a CustomFS.
 func BasicFS(commonName string, caLifeTime time.Duration, signLifeTime time.Duration) (*CustomFS, error) {
 	var config Config
@@ -229,9 +253,9 @@ func BasicFS(commonName string, caLifeTime time.Duration, signLifeTime time.Dura
 	config.CertificatesFileSystem = memfs.NewMemFS()
 	config.Profile = certificates.CertificateAuthorityProfile{
 		Version:    1,
-		Country:    "UN",
+		Country:    "RIVER",
 		Province:   "UN-G",
-		CommonName: commonName,
+		CommonName: "Basic CA Authority",
 		LifeTime:   caLifeTime,
 	}
 
@@ -270,12 +294,6 @@ func (cm *CustomFS) GetCertificate(email string) tlsfs.CertificateFunc {
 		if hname == "" {
 			return nil, errors.New("acme/customfs: missing server name")
 		}
-		//if !strings.Contains(strings.Trim(hname, hname"."), ".") {
-		//	return nil, errors.New("acme/customfs: server name component count invalid")
-		//}
-		//if strings.ContainsAny(hname, `/\`) {
-		//	return nil, errors.New("acme/customfs: server name contains invalid character")
-		//}
 
 		var wanted tls.CurveID
 		var found bool
@@ -596,7 +614,7 @@ func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.T
 	profile.Address = acct.Address
 	profile.Country = acct.Country
 	profile.Province = acct.Province
-	profile.LifeTime = tlsfs.ThreeMonths
+	profile.LifeTime = cm.config.SigningLifeTime
 	profile.CommonName = acct.CommonName
 	profile.Emails = []string{acct.Email}
 	profile.Organization = acct.CommonName
@@ -615,11 +633,11 @@ func (cm *CustomFS) CreateCA(acct tlsfs.NewDomain, tos tlsfs.TOSAction) (tlsfs.T
 	}
 
 	var doma tlsfs.TLSDomainCertificate
-	doma.IsSubCA = true
 	doma.Bundle = acct
 	doma.User = acct.Email
 	doma.Domain = acct.Domain
 	doma.Certificate = subCA.Certificate
+	doma.IsSubCA = subCA.Certificate.IsCA
 	doma.IssuerCertificate = cm.config.RootCA.Certificate
 
 	if err := cm.saveDomain(doma); err != nil {
