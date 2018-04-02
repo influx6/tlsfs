@@ -114,6 +114,7 @@
   version = "v1.1"
 
 [[projects]]
+  branch = "master"
   name = "github.com/influx6/faux"
   packages = [
     "bag",
@@ -122,7 +123,7 @@
     "pools/pbytes",
     "tests"
   ]
-  revision = "79fa50eff2f549ebbbf268c48942c86a1605d931"
+  revision = "a59889fba794220fa537e282dbaa37b8724a1aa0"
 
 [[projects]]
   name = "github.com/jmhodges/clock"
