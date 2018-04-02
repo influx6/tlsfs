@@ -325,12 +325,6 @@ type CertificateAuthorityProfile struct {
 
 	// General list of DNSNames for certificate.
 	DNSNames []string
-
-	// DNSNames to be excluded.
-	ExDNSNames []string
-
-	// DNSNames to be permitted.
-	PermDNSNames []string
 }
 
 // CreateCertificateAuthority returns a new instance of Certificate Authority which implements the
@@ -440,15 +434,9 @@ func CreateCertificateAuthority(cas CertificateAuthorityProfile) (CertificateAut
 	template.EmailAddresses = cas.Emails
 	template.BasicConstraintsValid = true
 	template.NotAfter = before.Add(cas.LifeTime)
-	template.ExcludedDNSDomains = cas.ExDNSNames
 	template.SignatureAlgorithm = signature
 	template.ExtKeyUsage = usages
 	template.KeyUsage = x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign | x509.KeyUsageKeyEncipherment | x509.KeyUsageCRLSign
-
-	if len(cas.PermDNSNames) != 0 {
-		template.PermittedDNSDomainsCritical = true
-		template.PermittedDNSDomains = cas.PermDNSNames
-	}
 
 	//var doVerification bool
 	parent := cas.ParentCA
